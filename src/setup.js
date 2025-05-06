@@ -12,6 +12,67 @@ async function question(query) {
   return new Promise(resolve => rl.question(query, resolve));
 }
 
+async function checkCloudflareLogin() {
+  try {
+    // Try to list tunnels to verify login status
+    execSync('cloudflared tunnel list', { stdio: 'pipe' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function checkExistingTunnel(tunnelName) {
+  try {
+    const result = execSync('cloudflared tunnel list --output json', { encoding: 'utf8' });
+    const tunnels = JSON.parse(result);
+    return tunnels.some(tunnel => tunnel.name === tunnelName);
+  } catch {
+    return false;
+  }
+}
+
+async function tryDNSSetup(domain, retries = 3) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      console.log('\n🔧 Setting up DNS...');
+      execSync(`cloudflared tunnel route dns tunnelpanda ${domain}`, { stdio: 'inherit' });
+      return true;
+    } catch (error) {
+      if (error.message.includes('record with that host already exists')) {
+        console.log('\n⚠️  DNS record already exists.');
+        const action = await question('Do you want to (1) try a different domain or (2) delete existing record? [1/2]: ');
+        
+        if (action === '2') {
+          try {
+            // First try to delete the existing tunnel route
+            execSync(`cloudflared tunnel route dns --overwrite-dns tunnelpanda ${domain}`, { stdio: 'inherit' });
+            console.log('✅ Successfully overwrote DNS record');
+            return true;
+          } catch (deleteError) {
+            console.log('❌ Failed to overwrite DNS record. Please delete it manually from Cloudflare dashboard.');
+          }
+        }
+        
+        if (action === '1' || action === '2') {
+          const newDomain = await question('Enter a different domain: ');
+          if (newDomain && newDomain !== domain) {
+            domain = newDomain;
+            continue;
+          }
+        }
+      }
+      
+      console.error('❌ DNS setup failed:', error.message);
+      const retry = await question('Do you want to try again? [y/N]: ');
+      if (retry.toLowerCase() !== 'y') {
+        return false;
+      }
+    }
+  }
+  return false;
+}
+
 async function setup() {
   console.log('🐼 TunnelPanda Setup Assistant');
   console.log('─────────────────────────────');
@@ -57,34 +118,84 @@ OLLAMA_API_KEY=${ollamaKey}
   console.log('\n🌥️  Cloudflare Tunnel Setup');
   console.log('────────────────────────');
   
-  const domain = await question('Enter your domain (e.g. api.your-domain.com): ');
+  let domain = await question('Enter your domain (e.g. api.your-domain.com): ');
   if (!domain) {
     console.error('❌ Domain is required');
     process.exit(1);
   }
 
   try {
-    // Login to Cloudflare (opens browser)
-    console.log('\n🔑 Opening browser for Cloudflare login...');
-    execSync('cloudflared tunnel login', { stdio: 'inherit' });
-
-    // Create tunnel
-    console.log('\n🚇 Creating tunnel...');
-    const result = execSync('cloudflared tunnel create tunnelpanda').toString();
-    const tunnelUuid = result.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/)?.[0];
-    
-    if (!tunnelUuid) {
-      throw new Error('Could not extract tunnel UUID');
+    // Check and handle Cloudflare login
+    const isLoggedIn = await checkCloudflareLogin();
+    if (!isLoggedIn) {
+      console.log('\n🔑 Opening browser for Cloudflare login...');
+      execSync('cloudflared tunnel login', { stdio: 'inherit' });
+    } else {
+      console.log('✅ Already logged in to Cloudflare');
     }
 
-    // Create DNS record
-    console.log('\n🔧 Setting up DNS...');
-    execSync(`cloudflared tunnel route dns tunnelpanda ${domain}`, { stdio: 'inherit' });
+    // Check for existing tunnel
+    let tunnelUuid;
+    const tunnelExists = await checkExistingTunnel('tunnelpanda');
+    
+    if (tunnelExists) {
+      console.log('✅ Tunnel "tunnelpanda" already exists');
+      // Get the tunnel ID from existing config if possible
+      try {
+        const configPath = path.join(configDir, 'config.yml');
+        if (fs.existsSync(configPath)) {
+          const configContent = fs.readFileSync(configPath, 'utf8');
+          tunnelUuid = configContent.match(/tunnel: ([0-9a-f-]+)/)?.[1];
+        }
+        
+        if (!tunnelUuid) {
+          // If we can't get ID from config, get it from tunnel list
+          const tunnelList = JSON.parse(execSync('cloudflared tunnel list --output json', { encoding: 'utf8' }));
+          const existingTunnel = tunnelList.find(t => t.name === 'tunnelpanda');
+          tunnelUuid = existingTunnel?.id;
+        }
+      } catch (err) {
+        console.log('⚠️ Could not retrieve existing tunnel details');
+      }
+    }
 
-    // Create config.yml
+    if (!tunnelUuid) {
+      console.log('\n🚇 Creating new tunnel...');
+      const result = execSync('cloudflared tunnel create tunnelpanda').toString();
+      tunnelUuid = result.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/)?.[0];
+      
+      if (!tunnelUuid) {
+        throw new Error('Could not extract tunnel UUID');
+      }
+    }
+
+    // Check if credentials file exists
     const homeDir = process.env.HOME || process.env.USERPROFILE;
+    const credentialsPath = path.join(homeDir, '.cloudflared', tunnelUuid + '.json');
+    
+    if (!fs.existsSync(credentialsPath)) {
+      console.log('⚠️ Tunnel credentials not found. You may need to recreate the tunnel.');
+      if (await question('Do you want to recreate the tunnel? [y/N]: ') === 'y') {
+        console.log('\n🚇 Recreating tunnel...');
+        execSync(`cloudflared tunnel cleanup tunnelpanda`, { stdio: 'inherit' });
+        const result = execSync('cloudflared tunnel create tunnelpanda').toString();
+        tunnelUuid = result.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/)?.[0];
+      } else {
+        throw new Error('Cannot proceed without valid tunnel credentials');
+      }
+    }
+
+    // Try to set up DNS with retry logic
+    const dnsSuccess = await tryDNSSetup(domain);
+    if (!dnsSuccess) {
+      console.error('❌ Failed to set up DNS after multiple attempts.');
+      console.log('Please set up DNS manually using:');
+      console.log(`cloudflared tunnel route dns tunnelpanda YOUR_DOMAIN`);
+    }
+
+    // Create or update config.yml
     const configContent = `tunnel: ${tunnelUuid}
-credentials-file: ${path.join(homeDir, '.cloudflared', tunnelUuid + '.json')}
+credentials-file: ${credentialsPath}
 
 ingress:
   - hostname: ${domain}
@@ -93,7 +204,7 @@ ingress:
 `;
 
     fs.writeFileSync(path.join(configDir, 'config.yml'), configContent);
-    console.log('✅ Created cloudflared/config.yml');
+    console.log('✅ Created/Updated cloudflared/config.yml');
 
     console.log('\n🎉 Setup complete! To start TunnelPanda:');
     console.log('1. Run in terminal 1: cloudflared tunnel --config cloudflared/config.yml run tunnelpanda');
