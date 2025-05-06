@@ -117,7 +117,7 @@ OLLAMA_API_KEY=${ollamaKey}
   // Cloudflare setup
   console.log('\n🌥️  Cloudflare Tunnel Setup');
   console.log('────────────────────────');
-  
+
   let domain = await question('Enter your domain (e.g. api.your-domain.com): ');
   if (!domain) {
     console.error('❌ Domain is required');
@@ -125,99 +125,54 @@ OLLAMA_API_KEY=${ollamaKey}
   }
 
   try {
-    // Check and handle Cloudflare login with Zero Trust scope
+    // Check and handle Cloudflare login
     const isLoggedIn = await checkCloudflareLogin();
     if (!isLoggedIn) {
       console.log('\n🔑 Opening browser for Cloudflare login...');
-      // Add Zero Trust scope to the login
-      execSync('cloudflared tunnel login --team-name YOUR_TEAM_NAME', { stdio: 'inherit' });
+      execSync('cloudflared tunnel login', { stdio: 'inherit' });
     } else {
       console.log('✅ Already logged in to Cloudflare');
     }
 
-    // Get team name for Zero Trust configuration
-    const teamName = await question('Enter your Cloudflare Team name (found in Zero Trust Dashboard): ');
-    if (!teamName) {
-      throw new Error('Team name is required for Zero Trust setup');
-    }
-
-    // Create tunnel with proper Zero Trust configuration
+    // Check if tunnel exists, create if not
+    const tunnelName = 'tunnel-panda';
     let tunnelUuid;
-    const tunnelExists = await checkExistingTunnel('tunnelpanda');
-    
+    const tunnelExists = await checkExistingTunnel(tunnelName);
+
     if (!tunnelExists) {
-      console.log('\n🚇 Creating new tunnel in Zero Trust...');
-      const result = execSync(`cloudflared tunnel create --team-name ${teamName} tunnelpanda`).toString();
+      console.log('\n🚇 Creating new tunnel...');
+      const result = execSync(`cloudflared tunnel create ${tunnelName}`).toString();
       tunnelUuid = result.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/)?.[0];
-      
+
       if (!tunnelUuid) {
         throw new Error('Could not extract tunnel UUID');
       }
+      console.log(`✅ Created tunnel ${tunnelName} with UUID: ${tunnelUuid}`);
     } else {
       // Get existing tunnel ID
       const tunnelList = JSON.parse(execSync('cloudflared tunnel list --output json', { encoding: 'utf8' }));
-      const existingTunnel = tunnelList.find(t => t.name === 'tunnelpanda');
+      const existingTunnel = tunnelList.find(t => t.name === tunnelName);
       tunnelUuid = existingTunnel?.id;
-      console.log('✅ Using existing tunnel:', tunnelUuid);
+      console.log(`✅ Using existing tunnel: ${tunnelUuid}`);
     }
 
-    // Configure Zero Trust settings
-    const configContent = `# Tunnel configuration with Zero Trust integration
-tunnel: ${tunnelUuid}
+    // Write minimal config.yml
+    const configContent = `tunnel: ${tunnelUuid}
 credentials-file: ${path.join(process.env.HOME || process.env.USERPROFILE, '.cloudflared', tunnelUuid + '.json')}
-teamName: ${teamName}
-
-# Zero Trust specific configuration
-warp-routing:
-  enabled: true
-
-# Enhanced security settings
-originRequest:
-  noTLSVerify: false
-  connectTimeout: 30s
-  tlsTimeout: 30s
-  keepAliveTimeout: 30s
-  tcpKeepAlive: true
-  proxyAddress: ""
 
 ingress:
   - hostname: ${domain}
     service: http://localhost:16014
-    # Zero Trust access policies
-    originRequest:
-      # Enable automatic authentication through Zero Trust
-      access:
-        required: true
-        teamName: ${teamName}
-      # Enhanced security headers
-      http2Origin: true
-      # Additional security headers
-      httpHostHeader: ${domain}
-      proxyType: "http"
-      # Connection pooling for better performance
-      keepAliveConnections: 100
-      keepAliveTimeout: "1m"
-
-  # Catch-all rule
   - service: http_status:404
 `;
-
     fs.writeFileSync(path.join(configDir, 'config.yml'), configContent);
-    console.log('✅ Created Zero Trust integrated config.yml');
+    console.log('✅ Created config.yml');
 
-    // Set up Zero Trust DNS routing
-    console.log('\n🔧 Setting up Zero Trust DNS routing...');
+    // Setup DNS routing
     await tryDNSSetup(domain);
 
-    console.log('\n🛡️ Configuring Zero Trust policies...');
-    console.log('Please complete these steps in your Cloudflare Zero Trust Dashboard:');
-    console.log('1. Go to Access > Applications');
-    console.log('2. Add a new application for:', domain);
-    console.log('3. Set up authentication policy (e.g., Cloudflare Access)');
-    console.log('4. Configure any additional security policies');
-
-    console.log('\n🎉 Setup complete! To start TunnelPanda with Zero Trust:');
-    console.log(`1. Run: cloudflared tunnel --config cloudflared/config.yml run tunnelpanda`);
+    console.log('\n🎉 Setup complete! To start TunnelPanda:');
+    console.log(`1. Run: cloudflared tunnel --config cloudflared/config.yml run ${tunnelName}`);
     console.log('2. Run: npm start');
 
   } catch (error) {
