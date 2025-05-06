@@ -167,6 +167,28 @@ app.post('/v1/chat/completions', async (req, res, next) => {
   }
 });
 
+// Ollama /api/generate endpoint
+app.post('/api/generate', async (req, res, next) => {
+  try {
+    const upstream = await axios({
+      method: 'post',
+      url: `${cfg.ollama.url}/api/generate`,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': cfg.ollama.apiKey
+          ? `Bearer ${cfg.ollama.apiKey}`
+          : undefined
+      },
+      data: req.body,
+      responseType: 'stream'
+    });
+    res.type('application/json');
+    upstream.data.pipe(res);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // errors
 app.use((err, req, res, _next) => {
   console.error(err);
