@@ -135,7 +135,7 @@ OLLAMA_API_KEY=${ollamaKey}
     }
 
     // Check if tunnel exists, create if not
-    const tunnelName = 'tunnel-panda';
+    const tunnelName = 'tunnelpanda';
     let tunnelUuid;
     const tunnelExists = await checkExistingTunnel(tunnelName);
 
