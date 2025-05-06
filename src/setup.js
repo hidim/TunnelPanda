@@ -14,7 +14,6 @@ async function question(query) {
 
 async function checkCloudflareLogin() {
   try {
-    // Try to list tunnels to verify login status
     execSync('cloudflared tunnel list', { stdio: 'pipe' });
     return true;
   } catch {
@@ -26,7 +25,7 @@ async function checkExistingTunnel(tunnelName) {
   try {
     const result = execSync('cloudflared tunnel list --output json', { encoding: 'utf8' });
     const tunnels = JSON.parse(result);
-    return tunnels.some(tunnel => tunnel.name === tunnelName);
+    return tunnels.some(t => t.name === tunnelName);
   } catch {
     return false;
   }
@@ -36,7 +35,7 @@ async function setup() {
   console.log('🐼 TunnelPanda Setup Assistant');
   console.log('─────────────────────────────');
 
-  // Check if cloudflared is installed
+  // Verify cloudflared installed
   try {
     execSync('cloudflared -v');
   } catch {
@@ -44,7 +43,7 @@ async function setup() {
     process.exit(1);
   }
 
-  // Create config directory if needed
+  // Ensure cloudflared directory
   const configDir = path.join(process.cwd(), 'cloudflared');
   if (!fs.existsSync(configDir)) {
     fs.mkdirSync(configDir);
@@ -69,52 +68,48 @@ OLLAMA_API_URL=${ollamaUrl}
 OLLAMA_API_KEY=${ollamaKey}
 `;
   fs.writeFileSync(envPath, envContent);
-  console.log('✅ Created .env file');
+  if (fs.existsSync(envPath)) {
+    console.log('✅ .env file created and verified at', envPath);
+  } else {
+    console.error('❌ Failed to create .env file at', envPath);
+    process.exit(1);
+  }
 
-  // Cloudflare setup
+  // Cloudflare tunnel setup
   console.log('\n🌥️  Cloudflare Tunnel Setup');
-  console.log('────────────────────────');
-
-  let domain = await question('Enter your domain (e.g. api.your-domain.com): ');
+  const domain = await question('Enter your domain (e.g. api.your-domain.com): ');
   if (!domain) {
     console.error('❌ Domain is required');
     process.exit(1);
   }
 
-  try {
-    // Check and handle Cloudflare login
-    const isLoggedIn = await checkCloudflareLogin();
-    if (!isLoggedIn) {
-      console.log('\n🔑 Opening browser for Cloudflare login...');
-      execSync('cloudflared tunnel login', { stdio: 'inherit' });
-    } else {
-      console.log('✅ Already logged in to Cloudflare');
-    }
+  // Login if needed
+  const isLoggedIn = await checkCloudflareLogin();
+  if (!isLoggedIn) {
+    console.log('\n🔑 Opening browser for Cloudflare login...');
+    execSync('cloudflared tunnel login', { stdio: 'inherit' });
+  } else {
+    console.log('✅ Already logged in to Cloudflare');
+  }
 
-    // Check if tunnel exists, create if not
-    const tunnelName = 'tunnelpanda';
-    let tunnelUuid;
-    const tunnelExists = await checkExistingTunnel(tunnelName);
+  // Create or reuse tunnel
+  const tunnelName = 'tunnelpanda';
+  let tunnelUuid;
+  const exists = await checkExistingTunnel(tunnelName);
+  if (!exists) {
+    console.log('\n🚇 Creating new tunnel...');
+    const res = execSync(`cloudflared tunnel create ${tunnelName}`).toString();
+    tunnelUuid = res.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/)[0];
+    console.log(`✅ Created tunnel ${tunnelName} (UUID: ${tunnelUuid})`);
+  } else {
+    const list = JSON.parse(execSync('cloudflared tunnel list --output json', { encoding: 'utf8' }));
+    const t = list.find(t => t.name === tunnelName);
+    tunnelUuid = t.id;
+    console.log(`✅ Using existing tunnel ${tunnelName} (UUID: ${tunnelUuid})`);
+  }
 
-    if (!tunnelExists) {
-      console.log('\n🚇 Creating new tunnel...');
-      const result = execSync(`cloudflared tunnel create ${tunnelName}`).toString();
-      tunnelUuid = result.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/)?.[0];
-
-      if (!tunnelUuid) {
-        throw new Error('Could not extract tunnel UUID');
-      }
-      console.log(`✅ Created tunnel ${tunnelName} with UUID: ${tunnelUuid}`);
-    } else {
-      // Get existing tunnel ID
-      const tunnelList = JSON.parse(execSync('cloudflared tunnel list --output json', { encoding: 'utf8' }));
-      const existingTunnel = tunnelList.find(t => t.name === tunnelName);
-      tunnelUuid = existingTunnel?.id;
-      console.log(`✅ Using existing tunnel: ${tunnelUuid}`);
-    }
-
-    // Write minimal config.yml
-    const configContent = `tunnel: ${tunnelUuid}
+  // Write config.yml
+  const cfg = `tunnel: ${tunnelUuid}
 credentials-file: ${path.join(process.env.HOME || process.env.USERPROFILE, '.cloudflared', tunnelUuid + '.json')}
 
 ingress:
@@ -122,32 +117,26 @@ ingress:
     service: http://localhost:16014
   - service: http_status:404
 `;
-    fs.writeFileSync(path.join(configDir, 'config.yml'), configContent);
-    console.log('✅ Created config.yml');
+  fs.writeFileSync(path.join(configDir, 'config.yml'), cfg);
+  console.log('✅ Created cloudflared/config.yml');
 
-    console.log('\n🔧 Setting up DNS...');
-    try {
-      execSync(`cloudflared tunnel route dns ${tunnelName} ${domain}`, { stdio: 'inherit' });
-      console.log('✅ DNS record created');
-    } catch (error) {
-      if (error.message.includes('record with that host already exists')) {
-        console.log('\n⚠️  DNS record already exists.');
-        execSync(`cloudflared tunnel route dns --overwrite-dns ${tunnelName} ${domain}`, { stdio: 'inherit' });
-        console.log('✅ DNS route updated');
-      } else {
-        throw error;
-      }
+  // Setup DNS
+  console.log('\n🔧 Setting up DNS...');
+  try {
+    execSync(`cloudflared tunnel route dns ${tunnelName} ${domain}`, { stdio: 'inherit' });
+    console.log('✅ DNS record created');
+  } catch (err) {
+    if (err.message.includes('already exists')) {
+      console.log('⚠️  DNS record already exists, updating...');
+      execSync(`cloudflared tunnel route dns --overwrite-dns ${tunnelName} ${domain}`, { stdio: 'inherit' });
+      console.log('✅ DNS route updated');
+    } else {
+      throw err;
     }
-
-    console.log('\n🎉 Setup complete! To start TunnelPanda:');
-    console.log(`1. Run: cloudflared tunnel --config cloudflared/config.yml run tunnelpanda`);
-    console.log('2. Run: npm start');
-
-  } catch (error) {
-    console.error('❌ Error:', error.message);
-    process.exit(1);
   }
 
+  console.log('\n🎉 Setup complete!');
+  console.log('Run `npm start` to launch Cloudflare Tunnel and Tunnel Panda proxy together.');
   rl.close();
 }
 
