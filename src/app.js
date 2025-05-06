@@ -20,6 +20,8 @@ const cfg        = require('./config');
 
 const PORT = Number(process.env.PORT) || 16014;
 const app  = express();
+// Enable trust proxy for correct client IP handling behind Cloudflare
+app.set('trust proxy', true);
 let server = null;
 let logs   = [];
 

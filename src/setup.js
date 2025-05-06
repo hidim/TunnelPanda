@@ -146,10 +146,8 @@ ingress:
     }
 
     console.log('\n🎉 Setup complete! To start TunnelPanda:');
-    console.log('1. Run: ./start');
+    console.log(`1. Run: cloudflared tunnel --config cloudflared/config.yml run tunnelpanda`);
     console.log('2. Run: npm start');
-
-    console.log('Run ./start to launch both Cloudflare tunnel and TunnelPanda');
 
   } catch (error) {
     console.error('❌ Error:', error.message);
