@@ -31,31 +31,36 @@ local **Ollama API** to the public **through your own Cloudflare Tunnel** –
 
 ---
 
-## 1 . Clone & configure
+## 1 . Clone & install (macOS)
 
 ```bash
 git clone https://github.com/hidim/tunnelpanda.git
 cd tunnelpanda
-cp .env.example .env          # then open .env and fill the blanks
+cp .env.example .env          # open .env in your editor and fill the blanks
 npm install
 ```
 
+---
 
-Developed by a 🐼
-# 🐼 Tunnel Panda — “Panda lives on 16014”
+## 📦 Install on Windows
 
-Tunnel Panda is a **tiny Node reverse‑proxy** that listens on **localhost:16014** and safely exposes your local **Ollama API** to the public **through *your own* Cloudflare Tunnel**.  
-Every incoming request must pass **Basic Auth** (user‑defined) **plus** a static `X‑APP‑TOKEN` before it is forwarded to Ollama.  
-Nothing leaves your machine until those gates are cleared.
-
+```powershell
+git clone https://github.com/hidim/tunnelpanda.git
+cd tunnelpanda
+copy .env.example .env        # then edit .env in Notepad or VS Code
+npm install
 ```
-```mermaid
-graph LR
-  A[Mobile / client] -- Basic‑Auth + X‑APP‑TOKEN --> B(https://api.<your‑domain>.com)
-  B -- Cloudflare Tunnel --> C[Tunnel‑Panda<br/>localhost:16014]
-  C --> D[Ollama API<br/>localhost:11434]
+
+---
+
+## 📦 Install on Linux
+
+```bash
+git clone https://github.com/hidim/tunnelpanda.git
+cd tunnelpanda
+cp .env.example .env          # open .env in your editor and fill the blanks
+npm install
 ```
-```markdown
 
 ---
 
@@ -64,12 +69,12 @@ graph LR
 ```
 tunnelpanda/
 ├── cloudflared/           # Cloudflare Tunnel config lives here
-│   └── config.yml
+│   └── config.yml
 ├── src/                   # Source code
-│   ├── app.js             # Tunnel Panda proxy (port 16014)
-│   └── config.js          # Loads env variables
+│   ├── app.js             # Tunnel Panda proxy (port 16014)
+│   └── config.js          # Loads env variables
 ├── .env.example           # Copy → .env and edit
-└── ReadMe.md              # You are here
+└── README.md              # You are here
 ```
 
 ---
