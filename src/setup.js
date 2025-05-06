@@ -125,90 +125,100 @@ OLLAMA_API_KEY=${ollamaKey}
   }
 
   try {
-    // Check and handle Cloudflare login
+    // Check and handle Cloudflare login with Zero Trust scope
     const isLoggedIn = await checkCloudflareLogin();
     if (!isLoggedIn) {
       console.log('\n🔑 Opening browser for Cloudflare login...');
-      execSync('cloudflared tunnel login', { stdio: 'inherit' });
+      // Add Zero Trust scope to the login
+      execSync('cloudflared tunnel login --team-name YOUR_TEAM_NAME', { stdio: 'inherit' });
     } else {
       console.log('✅ Already logged in to Cloudflare');
     }
 
-    // Check for existing tunnel
+    // Get team name for Zero Trust configuration
+    const teamName = await question('Enter your Cloudflare Team name (found in Zero Trust Dashboard): ');
+    if (!teamName) {
+      throw new Error('Team name is required for Zero Trust setup');
+    }
+
+    // Create tunnel with proper Zero Trust configuration
     let tunnelUuid;
     const tunnelExists = await checkExistingTunnel('tunnelpanda');
     
-    if (tunnelExists) {
-      console.log('✅ Tunnel "tunnelpanda" already exists');
-      // Get the tunnel ID from existing config if possible
-      try {
-        const configPath = path.join(configDir, 'config.yml');
-        if (fs.existsSync(configPath)) {
-          const configContent = fs.readFileSync(configPath, 'utf8');
-          tunnelUuid = configContent.match(/tunnel: ([0-9a-f-]+)/)?.[1];
-        }
-        
-        if (!tunnelUuid) {
-          // If we can't get ID from config, get it from tunnel list
-          const tunnelList = JSON.parse(execSync('cloudflared tunnel list --output json', { encoding: 'utf8' }));
-          const existingTunnel = tunnelList.find(t => t.name === 'tunnelpanda');
-          tunnelUuid = existingTunnel?.id;
-        }
-      } catch (err) {
-        console.log('⚠️ Could not retrieve existing tunnel details');
-      }
-    }
-
-    if (!tunnelUuid) {
-      console.log('\n🚇 Creating new tunnel...');
-      const result = execSync('cloudflared tunnel create tunnelpanda').toString();
+    if (!tunnelExists) {
+      console.log('\n🚇 Creating new tunnel in Zero Trust...');
+      const result = execSync(`cloudflared tunnel create --team-name ${teamName} tunnelpanda`).toString();
       tunnelUuid = result.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/)?.[0];
       
       if (!tunnelUuid) {
         throw new Error('Could not extract tunnel UUID');
       }
+    } else {
+      // Get existing tunnel ID
+      const tunnelList = JSON.parse(execSync('cloudflared tunnel list --output json', { encoding: 'utf8' }));
+      const existingTunnel = tunnelList.find(t => t.name === 'tunnelpanda');
+      tunnelUuid = existingTunnel?.id;
+      console.log('✅ Using existing tunnel:', tunnelUuid);
     }
 
-    // Check if credentials file exists
-    const homeDir = process.env.HOME || process.env.USERPROFILE;
-    const credentialsPath = path.join(homeDir, '.cloudflared', tunnelUuid + '.json');
-    
-    if (!fs.existsSync(credentialsPath)) {
-      console.log('⚠️ Tunnel credentials not found. You may need to recreate the tunnel.');
-      if (await question('Do you want to recreate the tunnel? [y/N]: ') === 'y') {
-        console.log('\n🚇 Recreating tunnel...');
-        execSync(`cloudflared tunnel cleanup tunnelpanda`, { stdio: 'inherit' });
-        const result = execSync('cloudflared tunnel create tunnelpanda').toString();
-        tunnelUuid = result.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/)?.[0];
-      } else {
-        throw new Error('Cannot proceed without valid tunnel credentials');
-      }
-    }
+    // Configure Zero Trust settings
+    const configContent = `# Tunnel configuration with Zero Trust integration
+tunnel: ${tunnelUuid}
+credentials-file: ${path.join(process.env.HOME || process.env.USERPROFILE, '.cloudflared', tunnelUuid + '.json')}
+teamName: ${teamName}
 
-    // Try to set up DNS with retry logic
-    const dnsSuccess = await tryDNSSetup(domain);
-    if (!dnsSuccess) {
-      console.error('❌ Failed to set up DNS after multiple attempts.');
-      console.log('Please set up DNS manually using:');
-      console.log(`cloudflared tunnel route dns tunnelpanda YOUR_DOMAIN`);
-    }
+# Zero Trust specific configuration
+warp-routing:
+  enabled: true
 
-    // Create or update config.yml
-    const configContent = `tunnel: ${tunnelUuid}
-credentials-file: ${credentialsPath}
+# Enhanced security settings
+originRequest:
+  noTLSVerify: false
+  connectTimeout: 30s
+  tlsTimeout: 30s
+  keepAliveTimeout: 30s
+  tcpKeepAlive: true
+  proxyAddress: ""
 
 ingress:
   - hostname: ${domain}
     service: http://localhost:16014
+    # Zero Trust access policies
+    originRequest:
+      # Enable automatic authentication through Zero Trust
+      access:
+        required: true
+        teamName: ${teamName}
+      # Enhanced security headers
+      http2Origin: true
+      # Additional security headers
+      httpHostHeader: ${domain}
+      proxyType: "http"
+      # Connection pooling for better performance
+      keepAliveConnections: 100
+      keepAliveTimeout: "1m"
+
+  # Catch-all rule
   - service: http_status:404
 `;
 
     fs.writeFileSync(path.join(configDir, 'config.yml'), configContent);
-    console.log('✅ Created/Updated cloudflared/config.yml');
+    console.log('✅ Created Zero Trust integrated config.yml');
 
-    console.log('\n🎉 Setup complete! To start TunnelPanda:');
-    console.log('1. Run in terminal 1: cloudflared tunnel --config cloudflared/config.yml run tunnelpanda');
-    console.log('2. Run in terminal 2: npm start');
+    // Set up Zero Trust DNS routing
+    console.log('\n🔧 Setting up Zero Trust DNS routing...');
+    await tryDNSSetup(domain);
+
+    console.log('\n🛡️ Configuring Zero Trust policies...');
+    console.log('Please complete these steps in your Cloudflare Zero Trust Dashboard:');
+    console.log('1. Go to Access > Applications');
+    console.log('2. Add a new application for:', domain);
+    console.log('3. Set up authentication policy (e.g., Cloudflare Access)');
+    console.log('4. Configure any additional security policies');
+
+    console.log('\n🎉 Setup complete! To start TunnelPanda with Zero Trust:');
+    console.log(`1. Run: cloudflared tunnel --config cloudflared/config.yml run tunnelpanda`);
+    console.log('2. Run: npm start');
 
   } catch (error) {
     console.error('❌ Error:', error.message);
