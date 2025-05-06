@@ -32,47 +32,6 @@ async function checkExistingTunnel(tunnelName) {
   }
 }
 
-async function tryDNSSetup(domain, retries = 3) {
-  for (let i = 0; i < retries; i++) {
-    try {
-      console.log('\n🔧 Setting up DNS...');
-      execSync(`cloudflared tunnel route dns tunnelpanda ${domain}`, { stdio: 'inherit' });
-      return true;
-    } catch (error) {
-      if (error.message.includes('record with that host already exists')) {
-        console.log('\n⚠️  DNS record already exists.');
-        const action = await question('Do you want to (1) try a different domain or (2) delete existing record? [1/2]: ');
-        
-        if (action === '2') {
-          try {
-            // First try to delete the existing tunnel route
-            execSync(`cloudflared tunnel route dns --overwrite-dns tunnelpanda ${domain}`, { stdio: 'inherit' });
-            console.log('✅ Successfully overwrote DNS record');
-            return true;
-          } catch (deleteError) {
-            console.log('❌ Failed to overwrite DNS record. Please delete it manually from Cloudflare dashboard.');
-          }
-        }
-        
-        if (action === '1' || action === '2') {
-          const newDomain = await question('Enter a different domain: ');
-          if (newDomain && newDomain !== domain) {
-            domain = newDomain;
-            continue;
-          }
-        }
-      }
-      
-      console.error('❌ DNS setup failed:', error.message);
-      const retry = await question('Do you want to try again? [y/N]: ');
-      if (retry.toLowerCase() !== 'y') {
-        return false;
-      }
-    }
-  }
-  return false;
-}
-
 async function setup() {
   console.log('🐼 TunnelPanda Setup Assistant');
   console.log('─────────────────────────────');
@@ -168,11 +127,22 @@ ingress:
     fs.writeFileSync(path.join(configDir, 'config.yml'), configContent);
     console.log('✅ Created config.yml');
 
-    // Setup DNS routing
-    await tryDNSSetup(domain);
+    console.log('\n🔧 Setting up DNS...');
+    try {
+      execSync(`cloudflared tunnel route dns ${tunnelName} ${domain}`, { stdio: 'inherit' });
+      console.log('✅ DNS record created');
+    } catch (error) {
+      if (error.message.includes('record with that host already exists')) {
+        console.log('\n⚠️  DNS record already exists.');
+        execSync(`cloudflared tunnel route dns --overwrite-dns ${tunnelName} ${domain}`, { stdio: 'inherit' });
+        console.log('✅ DNS route updated');
+      } else {
+        throw error;
+      }
+    }
 
     console.log('\n🎉 Setup complete! To start TunnelPanda:');
-    console.log(`1. Run: cloudflared tunnel --config cloudflared/config.yml run ${tunnelName}`);
+    console.log(`1. Run: cloudflared tunnel --config cloudflared/config.yml run tunnelpanda`);
     console.log('2. Run: npm start');
 
   } catch (error) {
