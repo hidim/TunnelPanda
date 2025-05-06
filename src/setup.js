@@ -52,14 +52,13 @@ async function setup() {
 
   // Environment setup
   const envPath = path.join(process.cwd(), '.env');
-  if (!fs.existsSync(envPath)) {
-    const username = await question('Enter Basic Auth username (default: panda): ') || 'panda';
-    const password = await question('Enter Basic Auth password (default: bamboo): ') || 'bamboo';
-    const appToken = await question('Enter app token (default: super-secret-token): ') || 'super-secret-token';
-    const ollamaUrl = await question('Enter Ollama API URL (default: http://localhost:11434): ') || 'http://localhost:11434';
-    const ollamaKey = await question('Enter Ollama API key (optional): ');
+  const username = await question('Enter Basic Auth username (default: panda): ') || 'panda';
+  const password = await question('Enter Basic Auth password (default: bamboo): ') || 'bamboo';
+  const appToken = await question('Enter app token (default: super-secret-token): ') || 'super-secret-token';
+  const ollamaUrl = await question('Enter Ollama API URL (default: http://localhost:11434): ') || 'http://localhost:11434';
+  const ollamaKey = await question('Enter Ollama API key (optional): ');
 
-    const envContent = `# Core
+  const envContent = `# Core
 PORT=16014
 BASIC_AUTH_USER=${username}
 BASIC_AUTH_PASS=${password}
@@ -69,9 +68,8 @@ APP_TOKEN=${appToken}
 OLLAMA_API_URL=${ollamaUrl}
 OLLAMA_API_KEY=${ollamaKey}
 `;
-    fs.writeFileSync(envPath, envContent);
-    console.log('✅ Created .env file');
-  }
+  fs.writeFileSync(envPath, envContent);
+  console.log('✅ Created .env file');
 
   // Cloudflare setup
   console.log('\n🌥️  Cloudflare Tunnel Setup');
