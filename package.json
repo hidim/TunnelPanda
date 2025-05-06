@@ -4,7 +4,12 @@
   "description": "A tiny Node reverse-proxy for exposing Ollama API via Cloudflare Tunnel with Basic Auth.",
   "main": "src/app.js",
   "scripts": {
-    "start": "node src/app.js"
+    "start": "node src/app.js",
+    "setup": "node src/setup.js",
+    "stop": "curl -X POST http://localhost:16014/control/stop",
+    "restart": "curl -X POST http://localhost:16014/control/restart",
+    "status": "curl -X POST http://localhost:16014/control/status",
+    "logs": "curl -X POST http://localhost:16014/control/logs"
   },
   "dependencies": {
     "express": "^4.18.2",

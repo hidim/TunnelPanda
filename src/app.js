@@ -14,10 +14,39 @@ const morgan     = require('morgan');
 const rateLimit  = require('express-rate-limit');
 const basicAuth  = require('basic-auth');
 const axios      = require('axios');
+const fs         = require('fs');
+const path       = require('path');
 const cfg        = require('./config');
 
 const PORT = Number(process.env.PORT) || 16014;
 const app  = express();
+let server = null;
+let logs   = [];
+
+// Configure logging
+const LOG_PATH = path.join(__dirname, '../logs');
+if (!fs.existsSync(LOG_PATH)) {
+  fs.mkdirSync(LOG_PATH);
+}
+
+const logStream = fs.createWriteStream(
+  path.join(LOG_PATH, `panda-${new Date().toISOString().split('T')[0]}.log`),
+  { flags: 'a' }
+);
+
+// Custom logging middleware
+app.use((req, res, next) => {
+  const log = {
+    timestamp: new Date().toISOString(),
+    method: req.method,
+    path: req.path,
+    ip: req.ip
+  };
+  logs.push(log);
+  if (logs.length > 1000) logs.shift(); // Keep last 1000 in memory
+  logStream.write(JSON.stringify(log) + '\n');
+  next();
+});
 
 // ────────────────────────────────────────── middleware
 app.use(helmet());
@@ -51,6 +80,66 @@ app.use((req, res, next) => {
   next();
 });
 
+// Control endpoints
+app.post('/control/:command', (req, res) => {
+  const { command } = req.params;
+  
+  switch (command) {
+    case 'stop':
+      if (server) {
+        server.close(() => {
+          console.log('🐼 TunnelPanda stopped');
+          res.json({ status: 'stopped' });
+        });
+      } else {
+        res.json({ error: 'Server not running' });
+      }
+      break;
+      
+    case 'start':
+      if (!server) {
+        server = app.listen(PORT, () => {
+          console.log(`🐼 TunnelPanda listening on http://localhost:${PORT}`);
+          res.json({ status: 'started', port: PORT });
+        });
+      } else {
+        res.json({ error: 'Server already running' });
+      }
+      break;
+      
+    case 'restart':
+      if (server) {
+        server.close(() => {
+          server = app.listen(PORT, () => {
+            console.log(`🐼 TunnelPanda restarted on http://localhost:${PORT}`);
+            res.json({ status: 'restarted', port: PORT });
+          });
+        });
+      } else {
+        server = app.listen(PORT, () => {
+          console.log(`🐼 TunnelPanda started on http://localhost:${PORT}`);
+          res.json({ status: 'started', port: PORT });
+        });
+      }
+      break;
+      
+    case 'status':
+      res.json({
+        status: server ? 'running' : 'stopped',
+        port: PORT,
+        uptime: server ? process.uptime() : 0
+      });
+      break;
+      
+    case 'logs':
+      res.json({ logs });
+      break;
+      
+    default:
+      res.status(400).json({ error: 'Invalid command' });
+  }
+});
+
 // health
 app.get('/status', (_, res) => res.json({ ok: true }));
 
@@ -82,7 +171,9 @@ app.use((err, req, res, _next) => {
   res.status(500).json({ error: 'Proxy error' });
 });
 
-// go!
-app.listen(PORT, () =>
-  console.log(`🐼  Tunnel Panda listening on http://localhost:${PORT}`)
-);
+// Start server on module load
+if (require.main === module) {
+  server = app.listen(PORT, () =>
+    console.log(`🐼 TunnelPanda listening on http://localhost:${PORT}`)
+  );
+}
