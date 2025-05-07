@@ -9,15 +9,15 @@
     "update": "npm cache verify && git pull && npm install --legacy-peer-deps && echo '✅ Update complete. You may need to restart the app.'"
   },
   "dependencies": {
+    "axios": "^1.6.0",
+    "basic-auth": "^2.0.1",
+    "dotenv": "^16.4.5",
     "express": "^4.18.2",
+    "express-rate-limit": "^7.0.0",
     "helmet": "^7.0.0",
     "morgan": "^1.10.0",
-    "express-rate-limit": "^7.0.0",
-    "basic-auth": "^2.0.1",
-    "axios": "^1.6.0",
-    "dotenv": "^16.4.5",
-    "ws": "^8.13.0",
-    "winston": "^3.13.0"
+    "winston": "^3.13.0",
+    "ws": "^8.18.2"
   },
   "author": "",
   "license": "MIT"
