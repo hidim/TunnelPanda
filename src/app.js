@@ -17,6 +17,7 @@ const axios      = require('axios');
 const fs         = require('fs');
 const path       = require('path');
 const cfg        = require('./config');
+const { execSync } = require('child_process');
 
 const PORT = Number(process.env.PORT) || 16014;
 const app  = express();
@@ -82,90 +83,8 @@ app.use((req, res, next) => {
   next();
 });
 
-// Control endpoints
-app.post('/control/:command', (req, res) => {
-  const { command } = req.params;
-  
-  switch (command) {
-    case 'stop':
-      if (server) {
-        server.close(() => {
-          console.log('🐼 TunnelPanda stopped');
-          res.json({ status: 'stopped' });
-        });
-      } else {
-        res.json({ error: 'Server not running' });
-      }
-      break;
-      
-    case 'start':
-      if (!server) {
-        server = app.listen(PORT, () => {
-          console.log(`🐼 TunnelPanda listening on http://localhost:${PORT}`);
-          res.json({ status: 'started', port: PORT });
-        });
-      } else {
-        res.json({ error: 'Server already running' });
-      }
-      break;
-      
-    case 'restart':
-      if (server) {
-        server.close(() => {
-          server = app.listen(PORT, () => {
-            console.log(`🐼 TunnelPanda restarted on http://localhost:${PORT}`);
-            res.json({ status: 'restarted', port: PORT });
-          });
-        });
-      } else {
-        server = app.listen(PORT, () => {
-          console.log(`🐼 TunnelPanda started on http://localhost:${PORT}`);
-          res.json({ status: 'started', port: PORT });
-        });
-      }
-      break;
-      
-    case 'status':
-      res.json({
-        status: server ? 'running' : 'stopped',
-        port: PORT,
-        uptime: server ? process.uptime() : 0
-      });
-      break;
-      
-    case 'logs':
-      res.json({ logs });
-      break;
-      
-    default:
-      res.status(400).json({ error: 'Invalid command' });
-  }
-});
-
 // health
 app.get('/status', (_, res) => res.json({ ok: true }));
-
-// ─────────────────────────────── proxy → Ollama (stream capable)
-app.post('/v1/chat/completions', async (req, res, next) => {
-  try {
-    const upstream = await axios({
-      method: 'post',
-      url:   `${cfg.ollama.url}/v1/chat/completions`,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': cfg.ollama.apiKey
-          ? `Bearer ${cfg.ollama.apiKey}`
-          : undefined
-      },
-      data: req.body,
-      responseType: 'stream'          // keep chunks
-    });
-    res.type('application/json');
-    upstream.data.pipe(res);
-  } catch (err) {
-    next(err);
-  }
-});
 
 // Ollama /api/generate endpoint
 app.post('/api/generate', async (req, res, next) => {
@@ -189,6 +108,78 @@ app.post('/api/generate', async (req, res, next) => {
   }
 });
 
+// ─────────────────────────────── additional Ollama API endpoints
+
+// Generate embeddings
+app.post('/v1/embeddings', async (req, res, next) => {
+  try {
+    const upstream = await axios({
+      method: 'post',
+      url: `${cfg.ollama.url}/v1/embeddings`,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': cfg.ollama.apiKey ? `Bearer ${cfg.ollama.apiKey}` : undefined
+      },
+      data: req.body,
+      responseType: 'json'
+    });
+    res.json(upstream.data);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// List available models
+app.get('/v1/models', async (req, res, next) => {
+  try {
+    const upstream = await axios({
+      method: 'get',
+      url: `${cfg.ollama.url}/v1/models`,
+      headers: {
+        'Authorization': cfg.ollama.apiKey ? `Bearer ${cfg.ollama.apiKey}` : undefined
+      },
+      responseType: 'json'
+    });
+    res.json(upstream.data);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Get model details
+app.get('/v1/models/:model', async (req, res, next) => {
+  try {
+    const upstream = await axios({
+      method: 'get',
+      url: `${cfg.ollama.url}/v1/models/${encodeURIComponent(req.params.model)}`,
+      headers: {
+        'Authorization': cfg.ollama.apiKey ? `Bearer ${cfg.ollama.apiKey}` : undefined
+      },
+      responseType: 'json'
+    });
+    res.json(upstream.data);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Health check proxy
+app.get('/v1/health', async (req, res, next) => {
+  try {
+    const upstream = await axios({
+      method: 'get',
+      url: `${cfg.ollama.url}/v1/health`,
+      headers: {
+        'Authorization': cfg.ollama.apiKey ? `Bearer ${cfg.ollama.apiKey}` : undefined
+      },
+      responseType: 'json'
+    });
+    res.json(upstream.data);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // errors
 app.use((err, req, res, _next) => {
   console.error(err);
@@ -197,6 +188,12 @@ app.use((err, req, res, _next) => {
 
 // Start server on module load
 if (require.main === module) {
+  try {
+    console.log('🌐 Starting Cloudflare Tunnel...');
+    execSync('cloudflared tunnel --config cloudflared/config.yml run tunnelpanda', { stdio: 'inherit' });
+  } catch (err) {
+    console.error('❌ Failed to start Cloudflare Tunnel:', err.message);
+  }
   server = app.listen(PORT, () =>
     console.log(`🐼 TunnelPanda listening on http://localhost:${PORT}`)
   );

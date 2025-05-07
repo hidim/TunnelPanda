@@ -145,9 +145,18 @@ ingress:
       }
     }
 
-    console.log('\n🎉 Setup complete! To start TunnelPanda:');
-    console.log(`1. Run: cloudflared tunnel --config cloudflared/config.yml run tunnelpanda`);
-    console.log('2. Run: npm start');
+    console.log('\n🚀 Starting TunnelPanda automatically...');
+    try {
+      execSync('cloudflared tunnel --config cloudflared/config.yml run tunnelpanda', { stdio: 'inherit' });
+    } catch (err) {
+      console.error('❌ Failed to start Cloudflare Tunnel:', err.message);
+    }
+
+    try {
+      execSync('npm start', { stdio: 'inherit' });
+    } catch (err) {
+      console.error('❌ Failed to start TunnelPanda app:', err.message);
+    }
 
   } catch (error) {
     console.error('❌ Error:', error.message);
