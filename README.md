@@ -101,7 +101,7 @@ curl -u panda:bamboo \
      -H "X-APP-TOKEN: super-secret-token" \
      -H "Content-Type: application/json" \
      -d '{"model":"phi4","prompt":"Write a haiku about pandas.","stream":false}' \
-     http://localhost:16014/api/generate
+     https://api.domain.com/api/generate
 ```
 
 ### 💬 Chat Stream
@@ -110,7 +110,7 @@ curl -u panda:bamboo \
      -H "X-APP-TOKEN: super-secret-token" \
      -H "Content-Type: application/json" \
      -d '{"model":"phi4","messages":[{"role":"user","content":"Hello Panda"}],"stream":true}' \
-     http://localhost:16014/api/chat
+     https://api.domain.com/api/chat
 ```
 
 ### 🏷 List Models (Tags)
@@ -126,21 +126,21 @@ curl -u panda:bamboo \
      -H "X-APP-TOKEN: super-secret-token" \
      -H "Content-Type: application/json" \
      -d '{"model":"phi4","input":["Convert this text to vector."]}' \
-     http://localhost:16014/api/embeddings
+     https://api.domain.com/api/embeddings
 ```
 
 ### ❤️ Health Checks
 ```bash
 curl -u panda:bamboo \
      -H "X-APP-TOKEN: super-secret-token" \
-     http://localhost:16014/health
+     https://api.domain.com/health
 ```
 
 ### 📊 Internal Monitoring
 ```bash
 curl -u panda:bamboo \
      -H "X-APP-TOKEN: super-secret-token" \
-     http://localhost:16014/_internal/rate-status
+     https://api.domain.com/_internal/rate-status
 ```
 
 ---

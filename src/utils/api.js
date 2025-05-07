@@ -15,24 +15,26 @@ class OllamaAPI {
   }
 
   // Generate endpoint
-  async generate(params, stream = true) {
+  async generate(params) {
+    const useStream = params.stream !== undefined ? params.stream : true;
     return axios({
       method: 'post',
       url: `${this.baseURL}/api/generate`,
       headers: this.getHeaders(),
-      data: { ...params, stream },
-      responseType: 'stream'
+      data: params,
+      responseType: useStream ? 'stream' : 'json'
     });
   }
 
   // Chat endpoint
-  async chat(params, stream = true) {
+  async chat(params) {
+    const useStream = params.stream !== undefined ? params.stream : true;
     return axios({
       method: 'post',
       url: `${this.baseURL}/api/chat`,
       headers: this.getHeaders(),
-      data: { ...params, stream },
-      responseType: 'stream'
+      data: params,
+      responseType: useStream ? 'stream' : 'json'
     });
   }
 
