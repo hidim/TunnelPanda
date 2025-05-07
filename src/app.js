@@ -8,34 +8,25 @@
 // So yes, Panda lives here. 🐼✨
 */
 require('dotenv').config();
-const express    = require('express');
-const helmet     = require('helmet');
-const morgan     = require('morgan');
-const rateLimit  = require('express-rate-limit');
-const basicAuth  = require('basic-auth');
-const axios      = require('axios');
-const fs         = require('fs');
-const path       = require('path');
-const cfg        = require('./config');
-const { execSync } = require('child_process');
+const express = require('express');
+const helmet = require('helmet');
+const morgan = require('morgan');
+const rateLimit = require('express-rate-limit');
 const http = require('http');
 const WebSocket = require('ws');
-
-const authenticate = require('./middleware/auth');
-
-const ollamaRouter = require('./routes/ollama');
-const healthRouter = require('./routes/health');
-
 const logger = require('./utils/logger');
+const authenticate = require('./middleware/auth');
+const ollamaAPI = require('./utils/api');
 
+const cfg = require('./config');
 const PORT = cfg.port;
-const app  = express();
-// Enable trust proxy for correct client IP handling behind Cloudflare
-app.set('trust proxy', 1);
-let server = null;
-let logs   = [];
 
-// Custom logging middleware using winston
+// Express app setup
+const app = express();
+app.set('trust proxy', 1);
+
+// Logging setup
+let logs = [];
 app.use((req, res, next) => {
   const log = {
     method: req.method,
@@ -43,18 +34,17 @@ app.use((req, res, next) => {
     ip: req.ip
   };
   logs.push({ ...log, timestamp: new Date().toISOString() });
-  if (logs.length > 1000) logs.shift(); // Keep last 1000 in memory
+  if (logs.length > 1000) logs.shift();
   logger.info(log);
   next();
 });
 
-// ────────────────────────────────────────── middleware
+// Middleware
 app.use(helmet());
 app.use(express.json({ limit: '1mb' }));
 app.use(morgan('combined'));
 
-
-// Body size logging middleware (before rate limiter)
+// Body size logging
 app.use((req, res, next) => {
   if (req.body && JSON.stringify(req.body).length > 10000) {
     logger.warn({ msg: 'Large payload', path: req.path, length: JSON.stringify(req.body).length });
@@ -62,6 +52,7 @@ app.use((req, res, next) => {
   next();
 });
 
+// Rate limiting
 app.use(rateLimit({
   windowMs: 60_000,
   max: 200,
@@ -70,10 +61,12 @@ app.use(rateLimit({
   validate: { trustProxy: true }
 }));
 
+// Authentication
 app.use(authenticate);
 
-app.use('/', healthRouter);
-app.use('/', ollamaRouter);
+// Routes
+app.use('/', require('./routes/health'));
+app.use('/', require('./routes/ollama'));
 
 // Internal endpoint: rate status
 app.get('/_internal/rate-status', (req, res) => {
@@ -87,60 +80,94 @@ app.get('/_internal/rate-status', (req, res) => {
   });
 });
 
-// errors
+// Error handler
 app.use((err, req, res, _next) => {
-  console.error(err);
+  logger.error(err);
   res.status(500).json({ error: 'Proxy error' });
 });
 
-// Start server on module load
+// Start server
 if (require.main === module) {
   const httpServer = http.createServer(app);
-  const wss = new WebSocket.Server({ server: httpServer, path: '/v1/chat/stream' });
+  
+  // WebSocket server setup
+  const wss = new WebSocket.Server({ 
+    server: httpServer, 
+    path: '/api/chat',
+    verifyClient: (info, cb) => {
+      // Basic auth ve token kontrolü WebSocket bağlantıları için de geçerli
+      const auth = authenticate(info.req, {}, (err) => {
+        if (err) {
+          cb(false, 401, 'Unauthorized');
+        } else {
+          cb(true);
+        }
+      });
+    }
+  });
 
-  // WebSocket heartbeat logic
-  function noop() {}
+  // WebSocket connection handler
   wss.on('connection', (ws) => {
     ws.isAlive = true;
-    ws.on('pong', () => { ws.isAlive = true; });
+    
+    ws.on('pong', () => {
+      ws.isAlive = true;
+    });
+
     ws.on('message', async (message) => {
       try {
-        const parsed = JSON.parse(message.toString());
-        const upstream = await axios({
-          method: 'post',
-          url: `${cfg.ollama.url}/api/generate`,
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': cfg.ollama.apiKey ? `Bearer ${cfg.ollama.apiKey}` : undefined
-          },
-          data: { ...parsed, stream: true },
-          responseType: 'stream'
-        });
+        const params = JSON.parse(message.toString());
+        const upstream = await ollamaAPI.chat(params);
 
         upstream.data.on('data', chunk => {
-          ws.send(JSON.stringify({ chunk: chunk.toString() }));
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(chunk.toString());
+          }
         });
 
-        upstream.data.on('end', () => ws.close());
-        upstream.data.on('error', () => ws.close());
+        upstream.data.on('end', () => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.close();
+          }
+        });
+
+        upstream.data.on('error', (err) => {
+          logger.error('Stream error:', err);
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ error: 'Stream error' }));
+            ws.close();
+          }
+        });
       } catch (err) {
-        ws.send(JSON.stringify({ error: 'Stream error' }));
-        ws.close();
+        logger.error('WebSocket error:', err);
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ error: 'WebSocket error' }));
+          ws.close();
+        }
       }
     });
   });
 
-  // Heartbeat interval
-  setInterval(() => {
+  // WebSocket heartbeat
+  const interval = setInterval(() => {
     wss.clients.forEach((ws) => {
-      if (!ws.isAlive) return ws.terminate();
+      if (!ws.isAlive) {
+        return ws.terminate();
+      }
       ws.isAlive = false;
       ws.ping();
     });
   }, 30000);
 
+  wss.on('close', () => {
+    clearInterval(interval);
+  });
+
+  // Start HTTP server
   httpServer.listen(PORT, () => {
-    console.log(`🐼 TunnelPanda listening on http://localhost:${PORT}`);
-    console.log('📡 WebSocket: /v1/chat/stream → /api/generate');
+    logger.info(`🐼 TunnelPanda listening on http://localhost:${PORT}`);
+    logger.info('📡 WebSocket: /api/chat');
   });
 }
+
+module.exports = app;

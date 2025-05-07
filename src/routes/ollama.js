@@ -1,24 +1,14 @@
 const express = require('express');
-const axios = require('axios');
 const router = express.Router();
-const cfg = require('../config');
+const ollamaAPI = require('../utils/api');
 
 // Sağlık durumu kontrolü
 router.get('/status', (_, res) => res.json({ ok: true }));
 
-// Sohbet oluşturma (stream destekli)
-router.post('/api/generate', async (req, res, next) => {
+// Chat endpoint (interaktif sohbet)
+router.post('/api/chat', async (req, res, next) => {
   try {
-    const upstream = await axios({
-      method: 'post',
-      url: `${cfg.ollama.url}/api/generate`,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': cfg.ollama.apiKey ? `Bearer ${cfg.ollama.apiKey}` : undefined
-      },
-      data: req.body,
-      responseType: 'stream'
-    });
+    const upstream = await ollamaAPI.chat(req.body);
     res.type('application/json');
     upstream.data.pipe(res);
   } catch (err) {
@@ -26,71 +16,32 @@ router.post('/api/generate', async (req, res, next) => {
   }
 });
 
-// Embedding oluşturma
-router.post('/v1/embeddings', async (req, res, next) => {
+// Generate endpoint (tek seferlik yanıt)
+router.post('/api/generate', async (req, res, next) => {
   try {
-    const upstream = await axios({
-      method: 'post',
-      url: `${cfg.ollama.url}/v1/embeddings`,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': cfg.ollama.apiKey ? `Bearer ${cfg.ollama.apiKey}` : undefined
-      },
-      data: req.body,
-      responseType: 'json'
-    });
-    res.json(upstream.data);
+    const upstream = await ollamaAPI.generate(req.body);
+    res.type('application/json');
+    upstream.data.pipe(res);
   } catch (err) {
     next(err);
   }
 });
 
 // Tüm modelleri listele
-router.get('/v1/models', async (req, res, next) => {
+router.get('/api/tags', async (req, res, next) => {
   try {
-    const upstream = await axios({
-      method: 'get',
-      url: `${cfg.ollama.url}/v1/models`,
-      headers: {
-        'Authorization': cfg.ollama.apiKey ? `Bearer ${cfg.ollama.apiKey}` : undefined
-      },
-      responseType: 'json'
-    });
-    res.json(upstream.data);
+    const response = await ollamaAPI.getTags();
+    res.json(response.data);
   } catch (err) {
     next(err);
   }
 });
 
-// Belirli bir modelin detayları
-router.get('/v1/models/:model', async (req, res, next) => {
+// Embeddings oluşturma
+router.post('/api/embeddings', async (req, res, next) => {
   try {
-    const upstream = await axios({
-      method: 'get',
-      url: `${cfg.ollama.url}/v1/models/${encodeURIComponent(req.params.model)}`,
-      headers: {
-        'Authorization': cfg.ollama.apiKey ? `Bearer ${cfg.ollama.apiKey}` : undefined
-      },
-      responseType: 'json'
-    });
-    res.json(upstream.data);
-  } catch (err) {
-    next(err);
-  }
-});
-
-// Ollama servis sağlık kontrolü
-router.get('/v1/health', async (req, res, next) => {
-  try {
-    const upstream = await axios({
-      method: 'get',
-      url: `${cfg.ollama.url}/v1/health`,
-      headers: {
-        'Authorization': cfg.ollama.apiKey ? `Bearer ${cfg.ollama.apiKey}` : undefined
-      },
-      responseType: 'json'
-    });
-    res.json(upstream.data);
+    const response = await ollamaAPI.createEmbeddings(req.body);
+    res.json(response.data);
   } catch (err) {
     next(err);
   }

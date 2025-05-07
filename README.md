@@ -420,3 +420,188 @@ Returns request stats by IP.
 ## 📄 License
 
 MIT — Built with ☕, bamboo, and tunnel magic.
+# 🐼 Tunnel Panda — “Panda lives on 16014”
+
+Tunnel Panda is a modular, secure reverse-proxy that streams your local Ollama API behind a Cloudflare Tunnel. It supports Basic Auth, API token control, and streaming over WebSocket.
+
+---
+
+## ✨ Features
+
+- 🔐 Basic Authentication + `X-APP-TOKEN` protection
+- ☁️ Cloudflare Tunnel exposure for local Ollama API
+- 💬 Stream completions over HTTP and WebSocket
+- 🧱 Modular architecture: routes, auth, logger
+- 🧰 Interactive setup (`npm run setup`)
+- 📈 Rate limit monitor: `/​_internal/rate-status`
+- 📜 Winston-based log rotation
+- 🔁 One-line updates: `npm run update`
+
+---
+
+## 📁 Folder Layout
+
+```
+tunnelpanda/
+├── cloudflared/
+│   └── config.yml
+├── src/
+│   ├── app.js
+│   ├── config.js
+│   ├── setup.js
+│   ├── routes/
+│   │   ├── ollama.js
+│   │   └── health.js
+│   ├── middleware/
+│   │   └── auth.js
+│   └── utils/
+│       ├── logger.js
+│       └── api.js
+├── .env.example
+├── package.json
+├── start
+└── README.md
+```
+
+---
+
+## 🔧 Prerequisites
+
+- Cloudflare account & domain
+- Node.js 18+
+- `cloudflared` installed
+- Ollama running locally at `http://localhost:11434`
+
+---
+
+## 🚀 Quick Start
+
+```bash
+git clone https://github.com/hidim/tunnelpanda.git
+cd tunnelpanda
+npm install
+npm run setup
+```
+
+Then follow the prompts. Once setup completes:
+
+```bash
+cloudflared tunnel --config cloudflared/config.yml run tunnelpanda
+npm start
+```
+
+---
+
+## 🔌 API Endpoints
+
+All endpoints require Basic Auth and `X-APP-TOKEN` header.
+
+### 🔁 `POST /api/generate`
+
+**Request:**
+```json
+{
+  "model": "phi4",
+  "prompt": "Write a haiku about pandas.",
+  "stream": false
+}
+```
+
+### 💬 `POST /api/chat`
+
+**Request:**
+```json
+{
+  "model": "phi4",
+  "messages": [{"role": "user", "content": "Hello!"}],
+  "stream": true
+}
+```
+
+### 🧠 `POST /api/embeddings`
+
+**Request:**
+```json
+{
+  "model": "phi4",
+  "input": ["Convert this text to vector."]
+}
+```
+
+### 🏷 `GET /api/tags`
+
+Returns available Ollama models (tags).
+
+### ❤️ Health Checks
+
+```http
+GET /v1/health
+GET /status
+```
+
+### 📊 Internal Rate Status
+
+```http
+GET /_internal/rate-status
+```
+
+---
+
+## 🧪 WebSocket Example
+
+**URL:**
+```
+ws://localhost:16014/api/chat
+```
+
+**Client:**
+```js
+const ws = new WebSocket('ws://localhost:16014/api/chat');
+
+ws.onopen = () => {
+  ws.send(JSON.stringify({
+    model: "phi4",
+    messages: [{ role: "user", content: "Hi panda!" }],
+    stream: true
+  }));
+};
+
+ws.onmessage = (msg) => console.log('AI:', msg.data);
+ws.onerror = (err) => console.error('WebSocket error', err);
+ws.onclose = () => console.log('WebSocket closed');
+```
+
+---
+
+## ⚙️ Environment Variables
+
+`.env` contents:
+
+```dotenv
+PORT=16014
+BASIC_AUTH_USER=panda
+BASIC_AUTH_PASS=bamboo
+APP_TOKEN=super-secret-token
+
+OLLAMA_API_URL=http://localhost:11434
+OLLAMA_API_KEY=
+```
+
+---
+
+## 📦 Update
+
+```bash
+npm run update
+```
+
+Runs:
+
+- `git pull`
+- `npm install`
+
+---
+
+## 📄 License
+
+MIT — Built with ☕, bamboo, and tunnel magic.
