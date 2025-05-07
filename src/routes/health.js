@@ -9,11 +9,11 @@ router.get('/status', (_, res) => {
 });
 
 // Proxy to Ollama health endpoint
-router.get('/v1/health', async (req, res, next) => {
+router.get('/health', async (req, res, next) => {
   try {
     const upstream = await axios({
       method: 'get',
-      url: `${cfg.ollama.url}/v1/health`,
+      url: `${cfg.ollama.url}/health`,
       headers: {
         'Authorization': cfg.ollama.apiKey ? `Bearer ${cfg.ollama.apiKey}` : undefined
       },
