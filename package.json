@@ -16,7 +16,8 @@
     "basic-auth": "^2.0.1",
     "axios": "^1.6.0",
     "dotenv": "^16.4.5",
-    "ws": "^8.13.0"
+    "ws": "^8.13.0",
+    "winston": "^3.13.0"
   },
   "author": "",
   "license": "MIT"
