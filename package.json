@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/app.js",
     "setup": "node src/setup.js",
-    "update": "git pull && npm install && echo '✅ Update complete. You may need to restart the app.'"
+    "update": "npm cache verify && git pull && npm install --legacy-peer-deps && echo '✅ Update complete. You may need to restart the app.'"
   },
   "dependencies": {
     "express": "^4.18.2",
