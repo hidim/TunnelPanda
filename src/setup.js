@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { execSync, spawn } = require('child_process');
 const readline = require('readline');
 
 const rl = readline.createInterface({
@@ -146,17 +146,22 @@ ingress:
     }
 
     console.log('\n🚀 Starting TunnelPanda automatically...');
-    try {
-      execSync('cloudflared tunnel --config cloudflared/config.yml run tunnelpanda', { stdio: 'inherit' });
-    } catch (err) {
-      console.error('❌ Failed to start Cloudflare Tunnel:', err.message);
-    }
+
+    const tunnelProcess = spawn('cloudflared', ['tunnel', '--config', 'cloudflared/config.yml', 'run', 'tunnelpanda'], {
+      stdio: 'inherit',
+      detached: true
+    });
+    tunnelProcess.unref();
 
     try {
       execSync('npm start', { stdio: 'inherit' });
     } catch (err) {
       console.error('❌ Failed to start TunnelPanda app:', err.message);
     }
+
+    console.log('\n🎉 Setup complete! To start TunnelPanda:');
+    console.log(`1. Run: cloudflared tunnel --config cloudflared/config.yml run tunnelpanda`);
+    console.log('2. Run: npm start');
 
   } catch (error) {
     console.error('❌ Error:', error.message);
