@@ -36,6 +36,15 @@ async function setup() {
   console.log('🐼 TunnelPanda Setup Assistant');
   console.log('─────────────────────────────');
 
+  // Check if setup already exists
+  const alreadySetup = fs.existsSync(path.join(process.cwd(), 'cloudflared', 'config.yml')) && fs.existsSync(path.join(process.cwd(), '.env'));
+  if (alreadySetup) {
+    console.log('⚙️  Setup already detected. Running update...');
+    execSync('npm run update', { stdio: 'inherit' });
+    rl.close();
+    return;
+  }
+
   // Check if cloudflared is installed
   try {
     execSync('cloudflared -v');

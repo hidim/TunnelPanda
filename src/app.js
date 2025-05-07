@@ -1,5 +1,5 @@
 /*
-// 🐼 Welcome to PandaLand!
+🐼 Welcome to PandaLand!
 // This app listens on port 16014 — Why?
 //   P = 16th letter of the alphabet
 //   A = 1st letter
@@ -18,36 +18,33 @@ const fs         = require('fs');
 const path       = require('path');
 const cfg        = require('./config');
 const { execSync } = require('child_process');
+const http = require('http');
+const WebSocket = require('ws');
 
-const PORT = Number(process.env.PORT) || 16014;
+const authenticate = require('./middleware/auth');
+
+const ollamaRouter = require('./routes/ollama');
+const healthRouter = require('./routes/health');
+
+const logger = require('./utils/logger');
+
+const PORT = cfg.port;
 const app  = express();
 // Enable trust proxy for correct client IP handling behind Cloudflare
-app.set('trust proxy', true);
+app.set('trust proxy', 1);
 let server = null;
 let logs   = [];
 
-// Configure logging
-const LOG_PATH = path.join(__dirname, '../logs');
-if (!fs.existsSync(LOG_PATH)) {
-  fs.mkdirSync(LOG_PATH);
-}
-
-const logStream = fs.createWriteStream(
-  path.join(LOG_PATH, `panda-${new Date().toISOString().split('T')[0]}.log`),
-  { flags: 'a' }
-);
-
-// Custom logging middleware
+// Custom logging middleware using winston
 app.use((req, res, next) => {
   const log = {
-    timestamp: new Date().toISOString(),
     method: req.method,
     path: req.path,
     ip: req.ip
   };
-  logs.push(log);
+  logs.push({ ...log, timestamp: new Date().toISOString() });
   if (logs.length > 1000) logs.shift(); // Keep last 1000 in memory
-  logStream.write(JSON.stringify(log) + '\n');
+  logger.info(log);
   next();
 });
 
@@ -56,128 +53,38 @@ app.use(helmet());
 app.use(express.json({ limit: '1mb' }));
 app.use(morgan('combined'));
 
+
+// Body size logging middleware (before rate limiter)
+app.use((req, res, next) => {
+  if (req.body && JSON.stringify(req.body).length > 10000) {
+    logger.warn({ msg: 'Large payload', path: req.path, length: JSON.stringify(req.body).length });
+  }
+  next();
+});
+
 app.use(rateLimit({
   windowMs: 60_000,
   max: 200,
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
+  validate: { trustProxy: true }
 }));
 
-// Basic Auth gate
-app.use((req, res, next) => {
-  const creds = basicAuth(req);
-  if (!creds ||
-      creds.name !== process.env.BASIC_AUTH_USER ||
-      creds.pass !== process.env.BASIC_AUTH_PASS) {
-    res.set('WWW-Authenticate', 'Basic realm="TunnelPanda"');
-    return res.status(401).send('Authentication required.');
-  }
-  next();
-});
+app.use(authenticate);
 
-// Static app token gate
-app.use((req, res, next) => {
-  if (req.get('X-APP-TOKEN') !== cfg.auth.appToken) {
-    return res.status(401).json({ error: 'Invalid X‑APP‑TOKEN' });
-  }
-  next();
-});
+app.use('/', healthRouter);
+app.use('/', ollamaRouter);
 
-// health
-app.get('/status', (_, res) => res.json({ ok: true }));
-
-// Ollama /api/generate endpoint
-app.post('/api/generate', async (req, res, next) => {
-  try {
-    const upstream = await axios({
-      method: 'post',
-      url: `${cfg.ollama.url}/api/generate`,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': cfg.ollama.apiKey
-          ? `Bearer ${cfg.ollama.apiKey}`
-          : undefined
-      },
-      data: req.body,
-      responseType: 'stream'
-    });
-    res.type('application/json');
-    upstream.data.pipe(res);
-  } catch (err) {
-    next(err);
-  }
-});
-
-// ─────────────────────────────── additional Ollama API endpoints
-
-// Generate embeddings
-app.post('/v1/embeddings', async (req, res, next) => {
-  try {
-    const upstream = await axios({
-      method: 'post',
-      url: `${cfg.ollama.url}/v1/embeddings`,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': cfg.ollama.apiKey ? `Bearer ${cfg.ollama.apiKey}` : undefined
-      },
-      data: req.body,
-      responseType: 'json'
-    });
-    res.json(upstream.data);
-  } catch (err) {
-    next(err);
-  }
-});
-
-// List available models
-app.get('/v1/models', async (req, res, next) => {
-  try {
-    const upstream = await axios({
-      method: 'get',
-      url: `${cfg.ollama.url}/v1/models`,
-      headers: {
-        'Authorization': cfg.ollama.apiKey ? `Bearer ${cfg.ollama.apiKey}` : undefined
-      },
-      responseType: 'json'
-    });
-    res.json(upstream.data);
-  } catch (err) {
-    next(err);
-  }
-});
-
-// Get model details
-app.get('/v1/models/:model', async (req, res, next) => {
-  try {
-    const upstream = await axios({
-      method: 'get',
-      url: `${cfg.ollama.url}/v1/models/${encodeURIComponent(req.params.model)}`,
-      headers: {
-        'Authorization': cfg.ollama.apiKey ? `Bearer ${cfg.ollama.apiKey}` : undefined
-      },
-      responseType: 'json'
-    });
-    res.json(upstream.data);
-  } catch (err) {
-    next(err);
-  }
-});
-
-// Health check proxy
-app.get('/v1/health', async (req, res, next) => {
-  try {
-    const upstream = await axios({
-      method: 'get',
-      url: `${cfg.ollama.url}/v1/health`,
-      headers: {
-        'Authorization': cfg.ollama.apiKey ? `Bearer ${cfg.ollama.apiKey}` : undefined
-      },
-      responseType: 'json'
-    });
-    res.json(upstream.data);
-  } catch (err) {
-    next(err);
-  }
+// Internal endpoint: rate status
+app.get('/_internal/rate-status', (req, res) => {
+  const ipCountMap = logs.reduce((acc, log) => {
+    acc[log.ip] = (acc[log.ip] || 0) + 1;
+    return acc;
+  }, {});
+  res.json({
+    uniqueIPs: Object.keys(ipCountMap).length,
+    requestsByIP: ipCountMap
+  });
 });
 
 // errors
@@ -188,7 +95,52 @@ app.use((err, req, res, _next) => {
 
 // Start server on module load
 if (require.main === module) {
-  server = app.listen(PORT, () =>
-    console.log(`🐼 TunnelPanda listening on http://localhost:${PORT}`)
-  );
+  const httpServer = http.createServer(app);
+  const wss = new WebSocket.Server({ server: httpServer, path: '/v1/chat/stream' });
+
+  // WebSocket heartbeat logic
+  function noop() {}
+  wss.on('connection', (ws) => {
+    ws.isAlive = true;
+    ws.on('pong', () => { ws.isAlive = true; });
+    ws.on('message', async (message) => {
+      try {
+        const parsed = JSON.parse(message.toString());
+        const upstream = await axios({
+          method: 'post',
+          url: `${cfg.ollama.url}/api/generate`,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': cfg.ollama.apiKey ? `Bearer ${cfg.ollama.apiKey}` : undefined
+          },
+          data: { ...parsed, stream: true },
+          responseType: 'stream'
+        });
+
+        upstream.data.on('data', chunk => {
+          ws.send(JSON.stringify({ chunk: chunk.toString() }));
+        });
+
+        upstream.data.on('end', () => ws.close());
+        upstream.data.on('error', () => ws.close());
+      } catch (err) {
+        ws.send(JSON.stringify({ error: 'Stream error' }));
+        ws.close();
+      }
+    });
+  });
+
+  // Heartbeat interval
+  setInterval(() => {
+    wss.clients.forEach((ws) => {
+      if (!ws.isAlive) return ws.terminate();
+      ws.isAlive = false;
+      ws.ping();
+    });
+  }, 30000);
+
+  httpServer.listen(PORT, () => {
+    console.log(`🐼 TunnelPanda listening on http://localhost:${PORT}`);
+    console.log('📡 WebSocket: /v1/chat/stream → /api/generate');
+  });
 }

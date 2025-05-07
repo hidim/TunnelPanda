@@ -232,3 +232,191 @@ sudo systemctl enable --now tunnelpanda
 ## 📄 License
 
 MIT — Built with ☕, bamboo and Pandas.
+# 🐼 Tunnel Panda — “Panda lives on 16014”
+
+Tunnel Panda is a lightweight, secure, and modular Node.js reverse-proxy that exposes your local Ollama API behind a Cloudflare Tunnel. It adds Basic Auth and static token-based security, and streams AI responses via HTTP and WebSocket.
+
+---
+
+## ✨ Features
+
+- 🔐 Basic Authentication + `X-APP-TOKEN` protection
+- ☁️ Public Cloudflare Tunnel from your local Ollama
+- 🔄 Stream responses over WebSocket
+- 📦 Modular route, auth, and logger architecture
+- 🧰 Interactive setup assistant (`npm run setup`)
+- 📊 Internal rate-limit monitor `/​_internal/rate-status`
+- 📜 Winston-based JSON logging with daily rotation
+- 🧠 Ollama proxy support: completions, embeddings, models
+- 🔁 Self-update via `npm run update`
+
+---
+
+## 📁 Folder Layout
+
+```
+tunnelpanda/
+├── cloudflared/         # Cloudflare Tunnel config
+│   └── config.yml
+├── src/
+│   ├── app.js           # Main app entry (Express + WS)
+│   ├── config.js        # Environment loader
+│   ├── setup.js         # Interactive installer
+│   ├── routes/          # Modular route handlers
+│   │   ├── ollama.js
+│   │   └── health.js
+│   ├── middleware/
+│   │   └── auth.js      # Auth middleware
+│   └── utils/
+│       └── logger.js    # Winston logger
+├── .env.example
+├── package.json
+├── start
+└── README.md
+```
+
+---
+
+## 🔧 Prerequisites
+
+- A **Cloudflare** account and domain
+- `cloudflared` installed on your system
+- **Node.js 18+**
+- Ollama running locally on `http://localhost:11434`
+
+---
+
+## 🚀 Quick Start
+
+```bash
+git clone https://github.com/hidim/tunnelpanda.git
+cd tunnelpanda
+npm install
+npm run setup
+```
+
+Setup will:
+
+1. Prompt for your auth and API settings  
+2. Write `.env` and `cloudflared/config.yml`  
+3. Log in to Cloudflare and create a DNS tunnel  
+4. Guide you to start manually
+
+---
+
+## ▶️ Start the Proxy
+
+```bash
+# Start tunnel
+cloudflared tunnel --config cloudflared/config.yml run tunnelpanda
+
+# Start proxy server
+npm start
+```
+
+---
+
+## 🔌 API Endpoints
+
+All endpoints require **Basic Auth** and `X-APP-TOKEN` header.
+
+### Chat Completion
+```
+POST /api/generate
+```
+
+### Embeddings
+```
+POST /v1/embeddings
+```
+
+### Models
+```
+GET /v1/models
+GET /v1/models/:model
+```
+
+### Health
+```
+GET /v1/health
+GET /status
+```
+
+### WebSocket Streaming
+```
+WS /v1/chat/stream → streams to /api/generate
+```
+
+---
+
+## ⚙️ Environment Variables
+
+`.env` file structure:
+
+```dotenv
+PORT=16014
+BASIC_AUTH_USER=panda
+BASIC_AUTH_PASS=bamboo
+APP_TOKEN=super-secret-token
+
+OLLAMA_API_URL=http://localhost:11434
+OLLAMA_API_KEY=
+```
+
+---
+
+## 🛠️ Update Script
+
+Update app via:
+
+```bash
+npm run update
+```
+
+This performs:
+
+- `git pull`
+- `npm install`
+
+---
+
+## 📦 systemd Example
+
+Linux system service:
+
+```ini
+[Unit]
+Description=Tunnel Panda
+After=network.target
+
+[Service]
+WorkingDirectory=/opt/tunnelpanda
+ExecStart=/usr/bin/node src/app.js
+EnvironmentFile=/opt/tunnelpanda/.env
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now tunnelpanda
+```
+
+---
+
+## 🧪 Internal Monitoring
+
+```http
+GET /_internal/rate-status
+```
+
+Returns request stats by IP.
+
+---
+
+## 📄 License
+
+MIT — Built with ☕, bamboo, and tunnel magic.

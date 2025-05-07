@@ -6,10 +6,7 @@
   "scripts": {
     "start": "node src/app.js",
     "setup": "node src/setup.js",
-    "stop": "curl -X POST http://localhost:16014/control/stop",
-    "restart": "curl -X POST http://localhost:16014/control/restart",
-    "status": "curl -X POST http://localhost:16014/control/status",
-    "logs": "curl -X POST http://localhost:16014/control/logs"
+    "update": "git pull && npm install && echo '✅ Update complete. You may need to restart the app.'"
   },
   "dependencies": {
     "express": "^4.18.2",
