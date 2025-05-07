@@ -188,12 +188,6 @@ app.use((err, req, res, _next) => {
 
 // Start server on module load
 if (require.main === module) {
-  try {
-    console.log('🌐 Starting Cloudflare Tunnel...');
-    execSync('cloudflared tunnel --config cloudflared/config.yml run tunnelpanda', { stdio: 'inherit' });
-  } catch (err) {
-    console.error('❌ Failed to start Cloudflare Tunnel:', err.message);
-  }
   server = app.listen(PORT, () =>
     console.log(`🐼 TunnelPanda listening on http://localhost:${PORT}`)
   );

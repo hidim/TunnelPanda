@@ -145,20 +145,6 @@ ingress:
       }
     }
 
-    console.log('\n🚀 Starting TunnelPanda automatically...');
-
-    const tunnelProcess = spawn('cloudflared', ['tunnel', '--config', 'cloudflared/config.yml', 'run', 'tunnelpanda'], {
-      stdio: 'inherit',
-      detached: true
-    });
-    tunnelProcess.unref();
-
-    try {
-      execSync('npm start', { stdio: 'inherit' });
-    } catch (err) {
-      console.error('❌ Failed to start TunnelPanda app:', err.message);
-    }
-
     console.log('\n🎉 Setup complete! To start TunnelPanda:');
     console.log(`1. Run: cloudflared tunnel --config cloudflared/config.yml run tunnelpanda`);
     console.log('2. Run: npm start');
