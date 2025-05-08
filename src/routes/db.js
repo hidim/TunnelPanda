@@ -1,32 +1,49 @@
-// src/routes/db.js
 const express = require('express');
+const config = require('../config');
 const { getDbClient } = require('../utils/dbFactory');
 const router = express.Router();
-const db = getDbClient();
 
-// Her istekte önce koleksiyon kontrolü
+// Use '/db' prefix in app.js, so here routes are relative: '/:collection'
 router.use('/:collection', async (req, res, next) => {
-  const col = req.params.collection;
-  if (!await db.collectionExists(col)) {
-    await db.createCollection(col);
+  const { collection } = req.params;
+  // Initialize DB client with env tenant/database
+  const db = getDbClient();
+  // Ensure collection exists
+  if (!(await db.collectionExists(collection))) {
+    await db.createCollection(collection);
   }
+  req.db = db;
   next();
 });
 
-// Örnek: sorgu endpoint’i
+// Query vectors in a collection
 router.post('/:collection/query', async (req, res, next) => {
   try {
-    const results = await db.queryCollection(req.params.collection, req.body.query, req.body.options);
+    const { collection } = req.params;
+    const { query_embeddings, n_results, include } = req.body;
+    const results = await req.db.queryCollection(
+      collection,
+      query_embeddings,
+      { nResults: n_results, include }
+    );
     res.json(results);
   } catch (err) {
     next(err);
   }
 });
 
-// Örnek: vektör ekleme endpoint’i
+// Add vectors to a collection
 router.post('/:collection/add', async (req, res, next) => {
   try {
-    await db.addVectors(req.params.collection, req.body.vectors);
+    const { collection } = req.params;
+    const { ids, embeddings, metadatas, documents } = req.body;
+    const vectors = ids.map((id, i) => ({
+      id,
+      embedding: embeddings[i],
+      metadata: metadatas[i],
+      document: documents[i],
+    }));
+    await req.db.addVectors(collection, vectors);
     res.status(204).end();
   } catch (err) {
     next(err);

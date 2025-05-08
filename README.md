@@ -169,6 +169,7 @@ ws.onclose = () => console.log('WebSocket closed');
 
 ## ⚙️ Environment Variables
 
+
 Create a file `.env` with:
 
 ```dotenv
@@ -179,6 +180,43 @@ APP_TOKEN=super-secret-token
 
 OLLAMA_API_URL=http://localhost:11434
 OLLAMA_API_KEY=
+```
+
+## 🗄️ DB Proxy Layer
+
+Tunnel Panda now includes a modular DB proxy layer under `/db`. It exposes your local vector databases behind the tunnel with a unified HTTP API. You can configure multiple providers via the `DB_PROVIDER` and related environment variables. The proxy uses a factory pattern to load the appropriate connector.
+
+Supported providers include:
+- **Chroma**: HTTP server at `DB_URL`, use `DB_TENANT` and `DB_DATABASE` to define the namespace.
+- **Milvus**
+- **Pinecone**
+- **SQLite**, **Redis**, **PostgreSQL**, **MySQL**, and more.
+
+### Example with Chroma
+
+```bash
+# Start a local Chroma HTTP server:
+chromadb run --path /path/to/vector_db --host 127.0.0.1 --port 8003
+
+# Configure Tunnel Panda environment:
+export DB_PROVIDER=chroma
+export DB_URL=http://localhost:8003
+export DB_TENANT=default
+export DB_DATABASE=vector_db
+
+# Start Tunnel Panda:
+npm start
+```
+
+### Accessing your databases
+
+Once running, you can proxy your vector DB calls through Tunnel Panda:
+
+```bash
+curl -u panda:bamboo -H "X-APP-TOKEN: super-secret-token" \
+     -X POST http://localhost:16014/db/reminders/query \
+     -H "Content-Type: application/json" \
+     -d '{"query_embeddings":[[0,0,0]],"n_results":5,"include":["documents","metadatas"]}'
 ```
 
 ---

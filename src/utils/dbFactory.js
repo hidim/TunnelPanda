@@ -1,3 +1,5 @@
+// src/utils/dbFactory.js
+
 const config = require('../config');
 
 // HTTP tabanlı connector’lar
@@ -5,22 +7,33 @@ const ChromaConnector   = require('./connectors/chromaConnector');
 const MilvusConnector   = require('./connectors/milvusConnector');
 const PineconeConnector = require('./connectors/pineconeConnector');
 
+// Dosya/SDK tabanlı connector’lar
 const SqliteConnector    = require('./connectors/sqliteConnector');
 const RedisConnector     = require('./connectors/redisConnector');
 const PostgresConnector  = require('./connectors/postgresConnector');
 const MysqlConnector     = require('./connectors/mysqlConnector');
 
-function getDbClient() {
-  const url   = config.dbUrl;
-  const proto = url.split(':')[0];
+ /**
+  * getDbClient optsiyonel olarak tenant ve database alır;
+  * yoksa .env üzerinden okunmuş config değerlerini kullanır.
+  *
+  * @param {object} [options]
+  * @param {string} [options.tenant]    Tenant adı (override)
+  * @param {string} [options.database]  Database adı (override)
+  */
+function getDbClient(options = {}) {
+  const url      = config.dbUrl;
+  const proto    = url.split(':')[0];
+  const tenant   = options.tenant   || config.dbTenant;
+  const database = options.database || config.dbDatabase;
 
   switch (proto) {
     // --- HTTP tabanlı vector DB’ler ---
     case 'http':
     case 'https': {
       const providers = {
-        chroma: ChromaConnector,
-        milvus: MilvusConnector,
+        chroma:   ChromaConnector,
+        milvus:   MilvusConnector,
         pinecone: PineconeConnector,
         // qdrant: QdrantConnector,
       };
@@ -28,7 +41,13 @@ function getDbClient() {
       if (!ProviderClass) {
         throw new Error(`Desteklenmeyen HTTP DB sağlayıcısı: ${config.dbProvider}`);
       }
-      return new ProviderClass({ url, apiKey: config.dbApiKey });
+      // tenant ve database’i de ctor’a geçiyoruz
+      return new ProviderClass({
+        url,
+        apiKey:   config.dbApiKey,
+        tenant,
+        database,
+      });
     }
 
     // --- SQLite (lokal dosya) ---

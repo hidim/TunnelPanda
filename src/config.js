@@ -14,4 +14,6 @@ module.exports = {
   dbProvider: process.env.DB_PROVIDER,
   dbUrl:      process.env.DB_URL,
   dbApiKey:   process.env.DB_API_KEY,
+  dbTenant:      process.env.DB_TENANT,
+  dbDatabase:    process.env.DB_DATABASE,
 };

@@ -69,7 +69,10 @@ async function setup() {
   const dbProvider = await question('Enter DB provider (default: chroma): ') || 'chroma';
   const dbUrl      = await question('Enter DB URL (default: http://localhost:8000): ') || 'http://localhost:8000';
   const dbApiKey   = await question('Enter DB API key (optional): ');
-
+  // Yeni: tenant ve database adı sorulsun
+  const dbTenant    = await question('Enter DB tenant (default: default_tenant): ') || 'default_tenant';
+  const dbDatabase  = await question('Enter DB database (default: default_database): ') || 'default_database';
+ 
   const envContent = `# Tunnel Panda
 PORT=${process.env.PORT || 16014}
 BASIC_AUTH_USER=${username}
@@ -84,6 +87,8 @@ OLLAMA_API_KEY=${ollamaKey}
 DB_PROVIDER=${dbProvider}
 DB_URL=${dbUrl}
 DB_API_KEY=${dbApiKey}
+DB_TENANT=${dbTenant}
+DB_DATABASE=${dbDatabase}
 `;
   fs.writeFileSync(envPath, envContent);
   // Verify .env was created

@@ -68,7 +68,7 @@ app.use(authenticate);
 // Routes
 app.use('/', require('./routes/health'));
 app.use('/', require('./routes/ollama'));
-app.use('/db',      dbRouter);
+app.use('/db', dbRouter);
 
 // Internal endpoint: rate status
 app.get('/_internal/rate-status', (req, res) => {
@@ -84,8 +84,18 @@ app.get('/_internal/rate-status', (req, res) => {
 
 // Error handler
 app.use((err, req, res, _next) => {
-  logger.error(err);
-  res.status(500).json({ error: 'Proxy error' });
+  logger.error('Proxy error:', {
+    message: err.message,
+    stack: err.stack,
+    path: req.path,
+    method: req.method,
+    body: req.body,
+    query: req.query,
+    params: req.params,
+    headers: req.headers,
+    error: err
+  });
+  res.status(500).json({ error: 'Proxy error', details: err.message, stack: err.stack });
 });
 
 // Start server
