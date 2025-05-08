@@ -180,6 +180,13 @@ APP_TOKEN=super-secret-token
 
 OLLAMA_API_URL=http://localhost:11434
 OLLAMA_API_KEY=
+
+# DB Proxy Layer
+DB_PROVIDER=chroma
+DB_URL=http://localhost:8003
+DB_TENANT=default_tenant
+DB_DATABASE=default_database
+DB_API_KEY=
 ```
 
 ## 🗄️ DB Proxy Layer

@@ -50,4 +50,16 @@ router.post('/:collection/add', async (req, res, next) => {
   }
 });
 
+// Get records from a collection
+router.post('/:collection/get', async (req, res, next) => {
+  try {
+    const { collection } = req.params;
+    const options = req.body || {};
+    const results = await req.db.getCollectionRecords(collection, options);
+    res.json(results);
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;

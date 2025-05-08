@@ -98,6 +98,60 @@ class ChromaConnector {
       throw err;
     }
   }
+
+  // Get records from a collection (by name)
+  async getCollectionRecords(name, options = {}) {
+    // Remove 'ids' from include before sending to Chroma
+    let include = options.include || ['documents', 'metadatas'];
+    let includeIds = false;
+    if (include.includes('ids')) {
+      include = include.filter(i => i !== 'ids');
+      includeIds = true;
+    }
+    const collectionId = await this.getCollectionIdByName(name);
+    const path =
+      `/api/v2/tenants/${this.tenant}/databases/${this.database}` +
+      `/collections/${encodeURIComponent(collectionId)}/get`;
+    const payload = {
+      ids: options.ids || null,
+      include,
+      limit: options.limit || 10,
+      offset: options.offset || 0,
+      where: options.where || undefined,
+      where_document: options.where_document || undefined
+    };
+    console.log(`[ChromaConnector] POST ${path}`);
+    console.log(`[ChromaConnector] Payload:`, JSON.stringify(payload));
+    try {
+      const res = await this.client.post(path, payload);
+      let data = res.data;
+      // If user requested 'ids', add it to include in the response
+      if (includeIds) {
+        data.include = [...(data.include || []), 'ids'];
+      }
+      // console.log(`[ChromaConnector] Get response:`, JSON.stringify(data));
+      // Log only the latest record as a single object
+      const lastIndex = (data.ids || data.documents || data.metadatas) && (
+        (data.ids || data.documents || data.metadatas).length - 1
+      );
+      console.log(
+        `[ChromaConnector] Latest record:`,
+        JSON.stringify({
+          id: data.ids?.[lastIndex],
+          document: data.documents?.[lastIndex],
+          metadata: data.metadatas?.[lastIndex]
+        })
+      );
+      return data;
+    } catch (err) {
+      if (err.response) {
+        console.error(`[ChromaConnector] Get error:`, err.response.status, err.response.data);
+      } else {
+        console.error(`[ChromaConnector] Get error:`, err.message);
+      }
+      throw err;
+    }
+  }
 }
 
 module.exports = ChromaConnector;
