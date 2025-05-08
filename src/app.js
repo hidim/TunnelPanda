@@ -17,6 +17,7 @@ const WebSocket = require('ws');
 const logger = require('./utils/logger');
 const authenticate = require('./middleware/auth');
 const ollamaAPI = require('./utils/api');
+const dbRouter      = require('./routes/db');
 
 const cfg = require('./config');
 const PORT = cfg.port;
@@ -67,6 +68,7 @@ app.use(authenticate);
 // Routes
 app.use('/', require('./routes/health'));
 app.use('/', require('./routes/ollama'));
+app.use('/db',      dbRouter);
 
 // Internal endpoint: rate status
 app.get('/_internal/rate-status', (req, res) => {
