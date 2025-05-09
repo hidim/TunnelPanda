@@ -25,6 +25,19 @@ class RedisConnector {
   async queryCollection(name, query, options = {}) {
     return await this.client.hgetall(`cp:collection:${name}`);
   }
+
+  async updateRecords(name, ids, metadatas) {
+    const pipeline = this.client.pipeline();
+    for (let i = 0; i < ids.length; i++) {
+      const currentData = await this.client.hget(`cp:collection:${name}`, ids[i]);
+      if (currentData) {
+        const vector = JSON.parse(currentData);
+        vector.metadata = metadatas[i];
+        pipeline.hset(`cp:collection:${name}`, ids[i], JSON.stringify(vector));
+      }
+    }
+    await pipeline.exec();
+  }
 }
 
 module.exports = RedisConnector;

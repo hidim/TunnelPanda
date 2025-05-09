@@ -34,14 +34,10 @@ class ChromaConnector {
   // Helper: get collection ID by name
   async getCollectionIdByName(name) {
     const cols = await this.listCollections();
-    const col = cols.find(c => (typeof c === 'string' ? c === name : c.name === name));
-    if (!col) {
-      console.error(`[ChromaConnector] Collection not found: ${name}`);
-      throw new Error(`Collection not found: ${name}`);
-    }
-    const id = typeof col === 'string' ? col : col.id;
-    console.log(`[ChromaConnector] Resolved collection name '${name}' to id '${id}'`);
-    return id;
+    const col = cols.find(c => c.name === name);
+    console.log(`[ChromaConnector] Selected Collection ${name} and col ${col}`);
+    if (!col) throw new Error(`Collection not found: ${name}`);
+    return col.id;
   }
 
   // Query vectors in a collection (by name)
@@ -129,7 +125,7 @@ class ChromaConnector {
       if (includeIds) {
         data.include = [...(data.include || []), 'ids'];
       }
-      // console.log(`[ChromaConnector] Get response:`, JSON.stringify(data));
+      //console.log(`[ChromaConnector] Get response:`, JSON.stringify(data));
       // Log only the latest record as a single object
       const lastIndex = (data.ids || data.documents || data.metadatas) && (
         (data.ids || data.documents || data.metadatas).length - 1
@@ -148,6 +144,35 @@ class ChromaConnector {
         console.error(`[ChromaConnector] Get error:`, err.response.status, err.response.data);
       } else {
         console.error(`[ChromaConnector] Get error:`, err.message);
+      }
+      throw err;
+    }
+  }
+
+  // Update records in a collection (by name)
+  async updateRecords(name, ids, metadatas) {
+    const collectionId = await this.getCollectionIdByName(name);
+    const path =
+      `/api/v2/tenants/${this.tenant}/databases/${this.database}` +
+      `/collections/${encodeURIComponent(collectionId)}/update`;
+    
+    const payload = {
+      ids,
+      metadatas
+    };
+
+    console.log(`[ChromaConnector] POST ${path}`);
+    console.log(`[ChromaConnector] Update payload:`, JSON.stringify(payload));
+
+    try {
+      const res = await this.client.post(path, payload);
+      console.log(`[ChromaConnector] Update response:`, JSON.stringify(res.data));
+      return res.data;
+    } catch (err) {
+      if (err.response) {
+        console.error(`[ChromaConnector] Update error:`, err.response.status, err.response.data);
+      } else {
+        console.error(`[ChromaConnector] Update error:`, err.message);
       }
       throw err;
     }

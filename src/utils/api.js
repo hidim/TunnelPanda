@@ -49,7 +49,7 @@ class OllamaAPI {
       headers: this.getHeaders(),
       data: params,
       responseType: useStream ? 'stream' : 'json',
-      timeout: 30000 // 30 second timeout
+      timeout: 120000 // 2 dakika timeout
     });
   }
 
@@ -62,7 +62,7 @@ class OllamaAPI {
       headers: this.getHeaders(),
       data: params,
       responseType: useStream ? 'stream' : 'json',
-      timeout: 30000
+      timeout: 120000 // 2 dakika timeout
     });
   }
 

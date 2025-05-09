@@ -43,6 +43,18 @@ class MysqlConnector {
     const [rows] = await conn.query(`SELECT * FROM \`${name}\``);
     return rows;
   }
+
+  async updateRecords(name, ids, metadatas) {
+    const conn = await this._getConn();
+    for (let i = 0; i < ids.length; i++) {
+      await conn.query(
+        `UPDATE \`${name}\` 
+         SET vector = JSON_SET(vector, '$.metadata', ?)
+         WHERE id = ?`,
+        [JSON.stringify(metadatas[i]), ids[i]]
+      );
+    }
+  }
 }
 
 module.exports = MysqlConnector;

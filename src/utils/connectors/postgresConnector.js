@@ -38,6 +38,17 @@ class PostgresConnector {
     const res = await this.client.query(`SELECT * FROM ${name}`);
     return res.rows;
   }
+
+  async updateRecords(name, ids, metadatas) {
+    for (let i = 0; i < ids.length; i++) {
+      const query = `
+        UPDATE ${name}
+        SET vector = jsonb_set(vector, '{metadata}', $1::jsonb)
+        WHERE id = $2
+      `;
+      await this.client.query(query, [JSON.stringify(metadatas[i]), ids[i]]);
+    }
+  }
 }
 
 module.exports = PostgresConnector;
