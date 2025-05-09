@@ -66,9 +66,15 @@ async function setup() {
   const appToken = await question('Enter app token (default: super-secret-token): ') || 'super-secret-token';
   const ollamaUrl = await question('Enter Ollama API URL (default: http://localhost:11434): ') || 'http://localhost:11434';
   const ollamaKey = await question('Enter Ollama API key (optional): ');
-
-  const envContent = `# Core
-PORT=16014
+  const dbProvider = await question('Enter DB provider (default: chroma): ') || 'chroma';
+  const dbUrl      = await question('Enter DB URL (default: http://localhost:8000): ') || 'http://localhost:8000';
+  const dbApiKey   = await question('Enter DB API key (optional): ');
+  // Yeni: tenant ve database adı sorulsun
+  const dbTenant    = await question('Enter DB tenant (default: default_tenant): ') || 'default_tenant';
+  const dbDatabase  = await question('Enter DB database (default: default_database): ') || 'default_database';
+ 
+  const envContent = `# Tunnel Panda
+PORT=${process.env.PORT || 16014}
 BASIC_AUTH_USER=${username}
 BASIC_AUTH_PASS=${password}
 APP_TOKEN=${appToken}
@@ -76,6 +82,13 @@ APP_TOKEN=${appToken}
 # Ollama
 OLLAMA_API_URL=${ollamaUrl}
 OLLAMA_API_KEY=${ollamaKey}
+
+# DB
+DB_PROVIDER=${dbProvider}
+DB_URL=${dbUrl}
+DB_API_KEY=${dbApiKey}
+DB_TENANT=${dbTenant}
+DB_DATABASE=${dbDatabase}
 `;
   fs.writeFileSync(envPath, envContent);
   // Verify .env was created
