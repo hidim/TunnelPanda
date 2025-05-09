@@ -1,3 +1,5 @@
+// src/utils/logger.js
+// Winston-based logger for TunnelPanda. Logs messages to daily rotating log files in JSON format.
 const winston = require('winston');
 const path = require('path');
 

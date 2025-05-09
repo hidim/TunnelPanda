@@ -1,10 +1,19 @@
 const sqlite3 = require('sqlite3').verbose();
 
+/**
+ * SqliteConnector provides methods to interact with a SQLite database for vector storage.
+ * Supports collection existence check, creation, vector addition, querying, and record updates.
+ */
 class SqliteConnector {
   constructor({ filePath }) {
     this.db = new sqlite3.Database(filePath);
   }
 
+  /**
+   * Checks if a table (collection) exists in the database.
+   * @param {string} name - Table name
+   * @returns {Promise<boolean>} True if the table exists, false otherwise.
+   */
   collectionExists(name) {
     return new Promise((resolve, reject) => {
       this.db.get(
@@ -15,6 +24,11 @@ class SqliteConnector {
     });
   }
 
+  /**
+   * Creates a new table (collection) if it does not exist.
+   * @param {string} name - Table name
+   * @returns {Promise<void>} Resolves when the table is created.
+   */
   createCollection(name) {
     return new Promise((resolve, reject) => {
       this.db.run(
@@ -24,6 +38,11 @@ class SqliteConnector {
     });
   }
 
+  /**
+   * Adds or replaces vectors in the specified table.
+   * @param {string} name - Table name
+   * @param {Array} vectors - Array of vector objects to add or replace.
+   */
   addVectors(name, vectors) {
     const stmt = this.db.prepare(
       `INSERT OR REPLACE INTO ${name} (id, vector) VALUES (?, ?)`
@@ -32,8 +51,15 @@ class SqliteConnector {
     stmt.finalize();
   }
 
+  /**
+   * Queries all rows from the specified table. (Simple example)
+   * @param {string} name - Table name
+   * @param {any} query - Query parameters (unused)
+   * @param {object} options - Query options (unused)
+   * @returns {Promise<Array>} Array of all rows in the table.
+   */
   queryCollection(name, query, options = {}) {
-    // Basit örnek: tüm satırları döndürür
+    // Simple example: returns all rows
     return new Promise((resolve, reject) => {
       this.db.all(
         `SELECT * FROM ${name}`,
@@ -43,6 +69,13 @@ class SqliteConnector {
     });
   }
 
+  /**
+   * Updates the metadata of records in the specified table.
+   * @param {string} name - Table name
+   * @param {Array} ids - Array of record IDs
+   * @param {Array} metadatas - Array of metadata objects to update
+   * @returns {Promise<void>} Resolves when the update is complete.
+   */
   updateRecords(name, ids, metadatas) {
     return new Promise((resolve, reject) => {
       this.db.serialize(() => {

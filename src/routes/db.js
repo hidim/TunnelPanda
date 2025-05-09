@@ -1,9 +1,11 @@
+// src/routes/db.js
+// Express router for database vector operations (query, add, get, update) on collections.
 const express = require('express');
 const config = require('../config');
 const { getDbClient } = require('../utils/dbFactory');
 const router = express.Router();
 
-// Use '/db' prefix in app.js, so here routes are relative: '/:collection'
+// Middleware: Ensures collection exists and attaches db client to request.
 router.use('/:collection', async (req, res, next) => {
   const { collection } = req.params;
   // Initialize DB client with env tenant/database
@@ -16,7 +18,12 @@ router.use('/:collection', async (req, res, next) => {
   next();
 });
 
-// Query vectors in a collection
+/**
+ * POST /:collection/query
+ * Queries vectors in a collection.
+ * Expects: { query_embeddings, n_results, include }
+ * Returns: Query results
+ */
 router.post('/:collection/query', async (req, res, next) => {
   try {
     const { collection } = req.params;
@@ -32,7 +39,11 @@ router.post('/:collection/query', async (req, res, next) => {
   }
 });
 
-// Add vectors to a collection
+/**
+ * POST /:collection/add
+ * Adds vectors to a collection.
+ * Expects: { ids, embeddings, metadatas, documents }
+ */
 router.post('/:collection/add', async (req, res, next) => {
   try {
     const { collection } = req.params;
@@ -50,7 +61,12 @@ router.post('/:collection/add', async (req, res, next) => {
   }
 });
 
-// Get records from a collection
+/**
+ * POST /:collection/get
+ * Gets records from a collection.
+ * Expects: options in body
+ * Returns: Records
+ */
 router.post('/:collection/get', async (req, res, next) => {
   try {
     const { collection } = req.params;
@@ -62,7 +78,11 @@ router.post('/:collection/get', async (req, res, next) => {
   }
 });
 
-// Update records in a collection
+/**
+ * POST /:collection/update
+ * Updates records in a collection.
+ * Expects: { ids, metadatas }
+ */
 router.post('/:collection/update', async (req, res, next) => {
   try {
     const { collection } = req.params;

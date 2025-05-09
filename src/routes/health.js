@@ -1,14 +1,22 @@
+// src/routes/health.js
+// Express router for health checks (local and upstream Ollama).
 const express = require('express');
 const axios = require('axios');
 const router = express.Router();
 const cfg = require('../config');
 
-// Local application health check
+/**
+ * GET /status
+ * Returns local application health status.
+ */
 router.get('/status', (_, res) => {
   res.json({ ok: true, service: 'TunnelPanda' });
 });
 
-// Proxy to Ollama health endpoint
+/**
+ * GET /health
+ * Proxies health check to upstream Ollama API.
+ */
 router.get('/health', async (req, res, next) => {
   try {
     const upstream = await axios({

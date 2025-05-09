@@ -1,3 +1,5 @@
+// src/config.js
+// Loads environment variables and exports application configuration.
 require('dotenv').config();
 
 module.exports = {

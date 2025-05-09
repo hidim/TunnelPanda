@@ -1,12 +1,20 @@
+// src/routes/ollama.js
+// Express router for Ollama API endpoints: chat, generate, tags, embeddings.
 const express = require('express');
 const router = express.Router();
 const ollamaAPI = require('../utils/api');
 const logger = require('../utils/logger');
 
-// Health check
+/**
+ * GET /status
+ * Returns a simple health check for the Ollama route.
+ */
 router.get('/status', (_, res) => res.json({ ok: true }));
 
-// Chat endpoint (interactive chat)
+/**
+ * POST /api/chat
+ * Handles chat requests (interactive chat with model).
+ */
 router.post('/api/chat', async (req, res, next) => {
   try {
     logger.info('Chat request received', { model: req.body.model });
@@ -26,7 +34,10 @@ router.post('/api/chat', async (req, res, next) => {
   }
 });
 
-// Generate endpoint (one-time response)
+/**
+ * POST /api/generate
+ * Handles one-time generation requests.
+ */
 router.post('/api/generate', async (req, res, next) => {
   try {
     logger.info('Generate request received', { model: req.body.model, stream: req.body.stream });
@@ -51,7 +62,10 @@ router.post('/api/generate', async (req, res, next) => {
   }
 });
 
-// List all models
+/**
+ * GET /api/tags
+ * Lists all available models (tags).
+ */
 router.get('/api/tags', async (req, res, next) => {
   try {
     logger.info('Tags request received');
@@ -66,7 +80,10 @@ router.get('/api/tags', async (req, res, next) => {
   }
 });
 
-// Create embeddings
+/**
+ * POST /api/embeddings
+ * Creates embeddings from input data.
+ */
 router.post('/api/embeddings', async (req, res, next) => {
   try {
     logger.info('Embeddings request received', { model: req.body.model });

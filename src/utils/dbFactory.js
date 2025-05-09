@@ -1,26 +1,28 @@
 // src/utils/dbFactory.js
+// Factory function to return the appropriate database client based on configuration.
+// Supports HTTP-based and file/SDK-based vector database connectors.
 
 const config = require('../config');
 
-// HTTP tabanlı connector’lar
+// HTTP-based connectors
 const ChromaConnector   = require('./connectors/chromaConnector');
 const MilvusConnector   = require('./connectors/milvusConnector');
 const PineconeConnector = require('./connectors/pineconeConnector');
 
-// Dosya/SDK tabanlı connector’lar
+// File/SDK-based connectors
 const SqliteConnector    = require('./connectors/sqliteConnector');
 const RedisConnector     = require('./connectors/redisConnector');
 const PostgresConnector  = require('./connectors/postgresConnector');
 const MysqlConnector     = require('./connectors/mysqlConnector');
 
- /**
-  * getDbClient optsiyonel olarak tenant ve database alır;
-  * yoksa .env üzerinden okunmuş config değerlerini kullanır.
-  *
-  * @param {object} [options]
-  * @param {string} [options.tenant]    Tenant adı (override)
-  * @param {string} [options.database]  Database adı (override)
-  */
+/**
+ * Returns a database client instance based on configuration or provided options.
+ *
+ * @param {object} [options] - Optional overrides for tenant and database.
+ * @param {string} [options.tenant]    Tenant name (override)
+ * @param {string} [options.database]  Database name (override)
+ * @returns {object} Database client instance
+ */
 function getDbClient(options = {}) {
   const url      = config.dbUrl;
   const proto    = url.split(':')[0];
@@ -28,7 +30,7 @@ function getDbClient(options = {}) {
   const database = options.database || config.dbDatabase;
 
   switch (proto) {
-    // --- HTTP tabanlı vector DB’ler ---
+    // --- HTTP-based vector databases ---
     case 'http':
     case 'https': {
       const providers = {
@@ -39,9 +41,9 @@ function getDbClient(options = {}) {
       };
       const ProviderClass = providers[config.dbProvider];
       if (!ProviderClass) {
-        throw new Error(`Desteklenmeyen HTTP DB sağlayıcısı: ${config.dbProvider}`);
+        throw new Error(`Unsupported HTTP database provider: ${config.dbProvider}`);
       }
-      // tenant ve database’i de ctor’a geçiyoruz
+      // Pass tenant and database to the constructor
       return new ProviderClass({
         url,
         apiKey:   config.dbApiKey,
@@ -50,30 +52,30 @@ function getDbClient(options = {}) {
       });
     }
 
-    // --- SQLite (lokal dosya) ---
+    // --- SQLite (local file-based database) ---
     case 'sqlite': {
-      // Örn: sqlite:///path/to/db.sqlite
+      // Example: sqlite:///path/to/db.sqlite
       const filePath = url.replace('sqlite://', '');
       return new SqliteConnector({ filePath });
     }
 
-    // --- Redis ---
+    // --- Redis (in-memory database) ---
     case 'redis': {
       return new RedisConnector({ connectionString: url });
     }
 
-    // --- PostgreSQL ---
+    // --- PostgreSQL (relational database) ---
     case 'postgres': {
       return new PostgresConnector({ connectionString: url });
     }
 
-    // --- MySQL ---
+    // --- MySQL (relational database) ---
     case 'mysql': {
       return new MysqlConnector({ connectionString: url });
     }
 
     default:
-      throw new Error(`Desteklenmeyen DB protokolü: ${proto}`);
+      throw new Error(`Unsupported database protocol: ${proto}`);
   }
 }
 

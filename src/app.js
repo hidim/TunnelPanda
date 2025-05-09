@@ -1,3 +1,6 @@
+// src/app.js
+// Main application entry point for TunnelPanda. Sets up Express server, middleware, routes, and error handling.
+
 /*
 🐼 Welcome to PandaLand!
 // This app listens on port 16014 — Why?
@@ -17,7 +20,7 @@ const WebSocket = require('ws');
 const logger = require('./utils/logger');
 const authenticate = require('./middleware/auth');
 const ollamaAPI = require('./utils/api');
-const dbRouter      = require('./routes/db');
+const dbRouter = require('./routes/db');
 
 const cfg = require('./config');
 const PORT = cfg.port;
@@ -29,6 +32,7 @@ app.set('trust proxy', 1);
 // Logging setup
 let logs = [];
 app.use((req, res, next) => {
+  // Logs each request's method, path, and IP address.
   const log = {
     method: req.method,
     path: req.path,
@@ -47,6 +51,7 @@ app.use(morgan('combined'));
 
 // Body size logging
 app.use((req, res, next) => {
+  // Logs if request body is larger than 10,000 characters.
   if (req.body && JSON.stringify(req.body).length > 10000) {
     logger.warn({ msg: 'Large payload', path: req.path, length: JSON.stringify(req.body).length });
   }
@@ -72,6 +77,7 @@ app.use('/db', dbRouter);
 
 // Internal endpoint: rate status
 app.get('/_internal/rate-status', (req, res) => {
+  // Returns the number of unique IPs and request counts by IP.
   const ipCountMap = logs.reduce((acc, log) => {
     acc[log.ip] = (acc[log.ip] || 0) + 1;
     return acc;
@@ -84,6 +90,7 @@ app.get('/_internal/rate-status', (req, res) => {
 
 // Error handler
 app.use((err, req, res, _next) => {
+  // Logs error details for failed requests.
   logger.error('Proxy error:', {
     message: err.message,
     stack: err.stack,
@@ -107,7 +114,7 @@ if (require.main === module) {
     server: httpServer, 
     path: '/api/chat',
     verifyClient: (info, cb) => {
-      // Basic auth ve token kontrolü WebSocket bağlantıları için de geçerli
+      // Basic authentication and token validation for WebSocket connections.
       const auth = authenticate(info.req, {}, (err) => {
         if (err) {
           cb(false, 401, 'Unauthorized');

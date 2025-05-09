@@ -1,3 +1,5 @@
+// ChromaConnector provides methods to interact with a Chroma vector database via HTTP API.
+// Supports listing collections, checking existence, creating collections, querying, adding vectors, retrieving records, and updating records.
 const axios = require('axios');
 
 class ChromaConnector {
@@ -12,26 +14,26 @@ class ChromaConnector {
     });
   }
 
-  // List all collections
+  // List all collections in the database
   async listCollections() {
     const path = `/api/v2/tenants/${this.tenant}/databases/${this.database}/collections`;
     const res = await this.client.get(path);
     return res.data;
   }
 
-  // Check if a collection exists
+  // Check if a collection exists by name
   async collectionExists(name) {
     const cols = await this.listCollections();
     return cols.some(c => (typeof c === 'string' ? c === name : c.name === name));
   }
 
-  // Create a new collection
+  // Create a new collection with the given name
   async createCollection(name) {
     const path = `/api/v2/tenants/${this.tenant}/databases/${this.database}/collections`;
     await this.client.post(path, { name });
   }
 
-  // Helper: get collection ID by name
+  // Get the collection ID by its name
   async getCollectionIdByName(name) {
     const cols = await this.listCollections();
     const col = cols.find(c => c.name === name);
@@ -40,7 +42,7 @@ class ChromaConnector {
     return col.id;
   }
 
-  // Query vectors in a collection (by name)
+  // Query vectors in a collection by name
   async queryCollection(name, queryEmbeddings, options = {}) {
     const collectionId = await this.getCollectionIdByName(name);
     const path =
@@ -67,7 +69,7 @@ class ChromaConnector {
     }
   }
 
-  // Add vectors to a collection (by name)
+  // Add vectors to a collection by name
   async addVectors(name, vectors) {
     const collectionId = await this.getCollectionIdByName(name);
     const path =
@@ -95,7 +97,7 @@ class ChromaConnector {
     }
   }
 
-  // Get records from a collection (by name)
+  // Get records from a collection by name
   async getCollectionRecords(name, options = {}) {
     // Remove 'ids' from include before sending to Chroma
     let include = options.include || ['documents', 'metadatas'];
@@ -125,7 +127,6 @@ class ChromaConnector {
       if (includeIds) {
         data.include = [...(data.include || []), 'ids'];
       }
-      //console.log(`[ChromaConnector] Get response:`, JSON.stringify(data));
       // Log only the latest record as a single object
       const lastIndex = (data.ids || data.documents || data.metadatas) && (
         (data.ids || data.documents || data.metadatas).length - 1
@@ -149,7 +150,7 @@ class ChromaConnector {
     }
   }
 
-  // Update records in a collection (by name)
+  // Update metadata of records in a collection by name
   async updateRecords(name, ids, metadatas) {
     const collectionId = await this.getCollectionIdByName(name);
     const path =

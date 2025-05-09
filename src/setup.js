@@ -1,3 +1,4 @@
+// Interactive setup assistant for TunnelPanda. Guides user through environment and tunnel configuration.
 const fs = require('fs');
 const path = require('path');
 const { execSync, spawn } = require('child_process');
@@ -8,10 +9,19 @@ const rl = readline.createInterface({
   output: process.stdout
 });
 
+/**
+ * Prompts the user with a question and returns the answer.
+ * @param {string} query - The question to ask
+ * @returns {Promise<string>} The user's answer
+ */
 async function question(query) {
   return new Promise(resolve => rl.question(query, resolve));
 }
 
+/**
+ * Checks if the user is logged in to Cloudflare.
+ * @returns {Promise<boolean>} True if logged in, false otherwise
+ */
 async function checkCloudflareLogin() {
   try {
     // Try to list tunnels to verify login status
@@ -22,6 +32,11 @@ async function checkCloudflareLogin() {
   }
 }
 
+/**
+ * Checks if a Cloudflare tunnel already exists.
+ * @param {string} tunnelName - The tunnel name
+ * @returns {Promise<boolean>} True if the tunnel exists, false otherwise
+ */
 async function checkExistingTunnel(tunnelName) {
   try {
     const result = execSync('cloudflared tunnel list --output json', { encoding: 'utf8' });
@@ -32,6 +47,9 @@ async function checkExistingTunnel(tunnelName) {
   }
 }
 
+/**
+ * Main setup function. Guides user through environment and tunnel setup.
+ */
 async function setup() {
   console.log('🐼 TunnelPanda Setup Assistant');
   console.log('─────────────────────────────');
@@ -69,7 +87,7 @@ async function setup() {
   const dbProvider = await question('Enter DB provider (default: chroma): ') || 'chroma';
   const dbUrl      = await question('Enter DB URL (default: http://localhost:8000): ') || 'http://localhost:8000';
   const dbApiKey   = await question('Enter DB API key (optional): ');
-  // Yeni: tenant ve database adı sorulsun
+  // New: ask for tenant and database name
   const dbTenant    = await question('Enter DB tenant (default: default_tenant): ') || 'default_tenant';
   const dbDatabase  = await question('Enter DB database (default: default_database): ') || 'default_database';
  
