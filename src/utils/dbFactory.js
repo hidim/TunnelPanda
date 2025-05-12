@@ -79,4 +79,15 @@ function getDbClient(options = {}) {
   }
 }
 
-module.exports = { getDbClient };
+/**
+ * Deletes vectors from a collection by IDs.
+ * @param {string} collection - Collection name
+ * @param {Array} ids - Array of vector IDs to delete
+ * @returns {Promise<void>} Resolves when deletion is complete.
+ */
+function deleteVectors(collection, ids) {
+  const db = getDbClient();
+  return db.deleteVectors(collection, ids);
+}
+
+module.exports = { getDbClient, deleteVectors };

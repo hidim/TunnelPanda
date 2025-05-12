@@ -102,4 +102,24 @@ router.post('/:collection/update', async (req, res, next) => {
   }
 });
 
+/**
+ * POST /:collection/delete
+ * Deletes vectors from a collection by IDs.
+ * Expects: { ids }
+ * Returns: Success message
+ */
+router.post('/:collection/delete', async (req, res, next) => {
+  try {
+    const { collection } = req.params;
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: 'Invalid request format', message: 'ids must be a non-empty array' });
+    }
+    await req.db.deleteVectors(collection, ids);
+    res.status(200).json({ message: 'Vectors deleted successfully' });
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;

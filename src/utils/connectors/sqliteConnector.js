@@ -97,6 +97,31 @@ class SqliteConnector {
       });
     });
   }
+
+  /**
+   * Deletes vectors from the specified collection by IDs.
+   * @param {string} name - Table name
+   * @param {Array} ids - Array of vector IDs to delete
+   * @returns {Promise<void>} Resolves when deletion is complete.
+   */
+  deleteVectors(name, ids) {
+    return new Promise((resolve, reject) => {
+      this.db.serialize(() => {
+        const stmt = this.db.prepare(
+          `DELETE FROM ${name} WHERE id = ?`
+        );
+        try {
+          for (let i = 0; i < ids.length; i++) {
+            stmt.run(ids[i]);
+          }
+          stmt.finalize();
+          resolve();
+        } catch (err) {
+          reject(err);
+        }
+      });
+    });
+  }
 }
 
 module.exports = SqliteConnector;

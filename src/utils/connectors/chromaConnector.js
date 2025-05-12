@@ -178,6 +178,26 @@ class ChromaConnector {
       throw err;
     }
   }
+
+  // Delete vectors from a collection by IDs
+  async deleteVectors(name, ids) {
+    const collectionId = await this.getCollectionIdByName(name);
+    const path =
+      `/api/v2/tenants/${this.tenant}/databases/${this.database}` +
+      `/collections/${encodeURIComponent(collectionId)}/delete`;
+    const payload = { ids };
+    try {
+      const res = await this.client.post(path, payload);
+      return res.data;
+    } catch (err) {
+      if (err.response) {
+        console.error(`[ChromaConnector] Delete error:`, err.response.status, err.response.data);
+      } else {
+        console.error(`[ChromaConnector] Delete error:`, err.message);
+      }
+      throw err;
+    }
+  }
 }
 
 module.exports = ChromaConnector;
