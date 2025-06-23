@@ -11,17 +11,40 @@ const cfg = require('../config');
  */
 function authenticate(req, res, next) {
   const user = basicAuth(req);
+  const sendError = (code, msg) => {
+    if (res && typeof res.status === 'function') {
+      if (code === 401 && typeof res.set === 'function') {
+        res.set('WWW-Authenticate', 'Basic realm="TunnelPanda"');
+      }
+      return res.status(code).send(msg);
+    }
+
+    if (typeof next === 'function') {
+      const err = new Error(msg);
+      err.status = code;
+      return next(err);
+    }
+
+    return false;
+  };
+
   if (!user || user.name !== cfg.auth.user || user.pass !== cfg.auth.pass) {
-    res.set('WWW-Authenticate', 'Basic realm="TunnelPanda"');
-    return res.status(401).send('Authentication required.');
+    return sendError(401, 'Authentication required.');
   }
 
-  const token = req.get('X-APP-TOKEN');
+  const token = (typeof req.get === 'function')
+    ? req.get('X-APP-TOKEN')
+    : (req.headers && req.headers['x-app-token']);
+
   if (!token || token !== cfg.auth.appToken) {
-    return res.status(403).send('Invalid or missing X-APP-TOKEN');
+    return sendError(403, 'Invalid or missing X-APP-TOKEN');
   }
 
-  next();
+  if (typeof next === 'function') {
+    return next();
+  }
+
+  return true;
 }
 
 module.exports = authenticate;
