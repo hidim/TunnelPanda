@@ -9,6 +9,11 @@ const router = express.Router();
 // Middleware: Ensures collection exists and attaches db client to request.
 router.use('/:collection', async (req, res, next) => {
   const { collection } = req.params;
+  // Skip middleware for status endpoint
+  if (collection === 'status') {
+    return next();
+  }
+  
   // Initialize DB client with env tenant/database
   const db = getDbClient();
   // Ensure collection exists
@@ -119,6 +124,53 @@ router.post('/:collection/delete', async (req, res, next) => {
     }
     await req.db.deleteVectors(collection, ids);
     res.status(200).json({ message: 'Vectors deleted successfully' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /status
+ * Returns database status and collection counts
+ */
+router.get('/status', async (req, res, next) => {
+  try {
+    const db = getDbClient();
+    
+    // Get actual collections from the database
+    const collections = await db.listCollections();
+    
+    // Build comprehensive status response
+    const status = {
+      connected: true,
+      timestamp: new Date().toISOString(),
+      database: {
+        provider: require('../config').dbProvider,
+        url: require('../config').dbUrl?.split('@')[1] || 'configured', // Hide credentials
+        tenant: require('../config').dbTenant,
+        database: require('../config').dbDatabase
+      },
+      collections: {
+        total: collections.length,
+        list: collections,
+        details: collections.reduce((acc, col) => {
+          const name = typeof col === 'string' ? col : col.name;
+          acc[name] = {
+            name,
+            id: typeof col === 'object' ? col.id : undefined,
+            // Add runtime counts if available
+            runtimeCount: global.collectionCounts?.[name] || 0,
+            lastAccessed: new Date().toISOString()
+          };
+          return acc;
+        }, {})
+      },
+      stats: {
+        totalRuntimeOperations: Object.values(global.collectionCounts || {}).reduce((sum, count) => sum + count, 0)
+      }
+    };
+    
+    res.json(status);
   } catch (err) {
     next(err);
   }
