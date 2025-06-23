@@ -117,13 +117,19 @@ if (require.main === module) {
     path: '/api/chat',
     verifyClient: (info, cb) => {
       // Basic authentication and token validation for WebSocket connections.
-      const auth = authenticate(info.req, {}, (err) => {
-        if (err) {
-          cb(false, 401, 'Unauthorized');
-        } else {
-          cb(true);
-        }
-      });
+      try {
+        const result = authenticate(info.req, null, (err) => {
+          if (err) {
+            logger.error('WebSocket auth error:', err);
+            cb(false, 401, 'Unauthorized');
+          } else {
+            cb(true);
+          }
+        });
+      } catch (err) {
+        logger.error('WebSocket auth exception:', err);
+        cb(false, 401, 'Unauthorized');
+      }
     }
   });
 
@@ -132,10 +138,20 @@ if (require.main === module) {
     server: httpServer,
     path: '/db/status',
     verifyClient: (info, cb) => {
-      authenticate(info.req, {}, (err) => {
-        if (err) cb(false, 401, 'Unauthorized');
-        else cb(true);
-      });
+      try {
+        const result = authenticate(info.req, null, (err) => {
+          if (err) {
+            logger.error('DB status WebSocket auth error:', err);
+            cb(false, 401, 'Unauthorized');
+          } else {
+            logger.info('DB status WebSocket authenticated successfully');
+            cb(true);
+          }
+        });
+      } catch (err) {
+        logger.error('DB status WebSocket auth exception:', err);
+        cb(false, 401, 'Unauthorized');
+      }
     }
   });
 

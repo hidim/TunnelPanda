@@ -5,8 +5,8 @@ const cfg = require('../config');
 
 /**
  * Authenticates requests using Basic Auth and X-APP-TOKEN header.
- * @param {object} req - Express request object
- * @param {object} res - Express response object
+ * @param {object} req - Express request object or WebSocket upgrade request
+ * @param {object} res - Express response object (can be null for WebSocket)
  * @param {function} next - Next middleware function
  */
 function authenticate(req, res, next) {
@@ -32,9 +32,10 @@ function authenticate(req, res, next) {
     return sendError(401, 'Authentication required.');
   }
 
+  // Handle both Express and WebSocket request headers
   const token = (typeof req.get === 'function')
     ? req.get('X-APP-TOKEN')
-    : (req.headers && req.headers['x-app-token']);
+    : (req.headers && (req.headers['x-app-token'] || req.headers['X-APP-TOKEN']));
 
   if (!token || token !== cfg.auth.appToken) {
     return sendError(403, 'Invalid or missing X-APP-TOKEN');
