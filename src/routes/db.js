@@ -3,6 +3,7 @@
 const express = require('express');
 const config = require('../config');
 const { getDbClient } = require('../utils/dbFactory');
+const dbEvents = require('../utils/dbEvents');
 const router = express.Router();
 
 // Middleware: Ensures collection exists and attaches db client to request.
@@ -55,6 +56,7 @@ router.post('/:collection/add', async (req, res, next) => {
       document: documents[i],
     }));
     await req.db.addVectors(collection, vectors);
+    dbEvents.emit('new-items', { collection, count: vectors.length });
     res.status(204).end();
   } catch (err) {
     next(err);

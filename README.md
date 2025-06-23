@@ -143,6 +143,17 @@ curl -u panda:bamboo \
      https://api.domain.com/_internal/rate-status
 ```
 
+### 📡 DB Status WebSocket
+Connect to `ws://localhost:16014/db/status` with the same authentication. On
+connect you'll receive a JSON map of collection counts:
+
+```json
+{ "reminders": 5, "tasks": 2 }
+```
+
+Every time new items are added the server broadcasts `{ "collection": "<name>",
+"count": <total> }`.
+
 ---
 
 ## 🧪 WebSocket Example
@@ -234,10 +245,11 @@ curl -u panda:bamboo -H "X-APP-TOKEN: super-secret-token" \
 npm run update
 ```
 
-Runs:
+Runs (fast-forward only):
 
-- `git pull`  
-- `npm install`
+- `git fetch --prune`
+- `git pull --ff-only`
+- `npm install --legacy-peer-deps`
 
 ---
 
