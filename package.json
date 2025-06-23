@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/app.js",
     "setup": "node src/setup.js",
-    "update": "npm cache verify && git pull && npm install --legacy-peer-deps && echo '✅ Update complete. You may need to restart the app.'"
+    "update": "npm cache verify && git fetch --prune && git pull --ff-only && npm install --legacy-peer-deps && echo '✅ Update complete. You may need to restart the app.'"
   },
   "dependencies": {
     "axios": "^1.6.0",

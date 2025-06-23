@@ -21,9 +21,11 @@ const logger = require('./utils/logger');
 const authenticate = require('./middleware/auth');
 const ollamaAPI = require('./utils/api');
 const dbRouter = require('./routes/db');
+const dbEvents = require('./utils/dbEvents');
 
 const cfg = require('./config');
 const PORT = cfg.port;
+const collectionCounts = {};
 
 // Express app setup
 const app = express();
@@ -110,8 +112,8 @@ if (require.main === module) {
   const httpServer = http.createServer(app);
   
   // WebSocket server setup
-  const wss = new WebSocket.Server({ 
-    server: httpServer, 
+  const wss = new WebSocket.Server({
+    server: httpServer,
     path: '/api/chat',
     verifyClient: (info, cb) => {
       // Basic authentication and token validation for WebSocket connections.
@@ -121,6 +123,18 @@ if (require.main === module) {
         } else {
           cb(true);
         }
+      });
+    }
+  });
+
+  // DB status WebSocket
+  const statusWss = new WebSocket.Server({
+    server: httpServer,
+    path: '/db/status',
+    verifyClient: (info, cb) => {
+      authenticate(info.req, {}, (err) => {
+        if (err) cb(false, 401, 'Unauthorized');
+        else cb(true);
       });
     }
   });
@@ -167,6 +181,21 @@ if (require.main === module) {
     });
   });
 
+  // DB status connection handler
+  statusWss.on('connection', (ws) => {
+    ws.send(JSON.stringify(collectionCounts));
+  });
+
+  dbEvents.on('new-items', ({ collection, count }) => {
+    collectionCounts[collection] = (collectionCounts[collection] || 0) + count;
+    const message = JSON.stringify({ collection, count: collectionCounts[collection] });
+    statusWss.clients.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(message);
+      }
+    });
+  });
+
   // WebSocket heartbeat
   const interval = setInterval(() => {
     wss.clients.forEach((ws) => {
@@ -186,6 +215,7 @@ if (require.main === module) {
   httpServer.listen(PORT, () => {
     logger.info(`🐼 TunnelPanda listening on http://localhost:${PORT}`);
     logger.info('📡 WebSocket: /api/chat');
+    logger.info('📡 WebSocket: /db/status');
   });
 }
 
