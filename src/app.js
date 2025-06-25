@@ -51,14 +51,15 @@ app.use((req, res, next) => {
 
 // Middleware
 app.use(helmet());
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: cfg.requestLimit })); // Use configurable limit
+app.use(express.urlencoded({ limit: cfg.requestLimit, extended: true })); // Use configurable limit
 app.use(morgan('combined'));
 
 // Body size logging
 app.use((req, res, next) => {
-  // Logs if request body is larger than 10,000 characters.
-  if (req.body && JSON.stringify(req.body).length > 10000) {
-    logger.warn({ msg: 'Large payload', path: req.path, length: JSON.stringify(req.body).length });
+  // Logs if request body is larger than the configured threshold.
+  if (req.body && JSON.stringify(req.body).length > cfg.largePayloadThreshold) {
+    logger.warn({ msg: 'Large payload', path: req.path, length: JSON.stringify(req.body).length, threshold: cfg.largePayloadThreshold });
   }
   next();
 });

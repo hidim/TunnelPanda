@@ -4,6 +4,8 @@ require('dotenv').config();
 
 module.exports = {
   port: process.env.PORT || 16014,
+  requestLimit: process.env.REQUEST_SIZE_LIMIT || '10mb', // Added configurable request size limit
+  largePayloadThreshold: parseInt(process.env.LARGE_PAYLOAD_THRESHOLD) || 50000, // Default 50KB (increased from 10KB)
   ollama: {
     url:   process.env.OLLAMA_API_URL || 'http://localhost:11434',
     apiKey: process.env.OLLAMA_API_KEY || ''
