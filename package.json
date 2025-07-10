@@ -6,7 +6,12 @@
   "scripts": {
     "start": "node src/app.js",
     "setup": "node src/setup.js",
-    "update": "npm cache verify && git fetch --prune && git pull --ff-only && npm install --legacy-peer-deps && echo '✅ Update complete. You may need to restart the app.'"
+    "update": "npm cache verify && git fetch --prune && git pull --ff-only && npm install --legacy-peer-deps && echo '✅ Update complete. You may need to restart the app.'",
+    "launcher": "node launcher.js",
+    "electron": "electron ui/main.js",
+    "electron-dev": "electron ui/main.js --dev",
+    "build-electron": "electron-builder",
+    "dist": "npm run build-electron"
   },
   "dependencies": {
     "axios": "^1.6.0",
@@ -22,6 +27,34 @@
     "sqlite3": "^5.1.7",
     "winston": "^3.13.0",
     "ws": "^8.18.2"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.tunnelpanda.app",
+    "productName": "TunnelPanda",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "ui/**/*",
+      "package.json",
+      "!logs/*",
+      "!node_modules/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "icon": "ui/assets/app.png"
+    },
+    "win": {
+      "icon": "ui/assets/app.png"
+    },
+    "linux": {
+      "icon": "ui/assets/app.png"
+    }
   },
   "author": "",
   "license": "MIT"

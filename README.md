@@ -14,6 +14,7 @@ Tunnel Panda is a modular, secure reverse‑proxy that streams your local Ollama
 - 📈 Internal rate-limit monitor: `/​_internal/rate-status`  
 - 📜 Winston-based JSON logging with daily rotation  
 - 🔁 One-line self-update: `npm run update`
+- 🖥️ **NEW: Electron GUI Control Center** with visual management
 
 ---
 
@@ -21,6 +22,13 @@ Tunnel Panda is a modular, secure reverse‑proxy that streams your local Ollama
 
 ```
 tunnelpanda/
+├── ui/                    # Electron GUI Control Center
+│   ├── main.js
+│   ├── preload.js
+│   ├── index.html
+│   ├── styles.css
+│   ├── app.js
+│   └── assets/
 ├── cloudflared/
 │   └── config.yml
 ├── src/
@@ -75,6 +83,7 @@ choco install nodejs-lts git -y
 
 ## 🚀 Quick Start
 
+### Command Line (Traditional)
 ```bash
 git clone https://github.com/hidim/tunnelpanda.git
 cd tunnelpanda
@@ -88,6 +97,25 @@ Follow the prompts. After setup:
 cloudflared tunnel --config cloudflared/config.yml run tunnelpanda
 npm start
 ```
+
+### GUI Control Center (NEW)
+```bash
+git clone https://github.com/hidim/tunnelpanda.git
+cd tunnelpanda
+npm install
+npm run electron
+```
+
+The Electron GUI provides:
+- 🎛️ **Visual Controls**: Start/stop server and tunnel with buttons
+- 🔐 **Security Management**: Configure auth, tokens, and rate limits
+- 📊 **Real-time Monitoring**: Live stats, logs, and WebSocket data
+- 🗄️ **Database Console**: Manage vector database connections
+- 🔧 **API Testing**: Built-in endpoint tester with sample requests
+- 📝 **Log Viewer**: Browse and filter application logs
+- ⚙️ **Settings Panel**: Complete configuration management
+
+Both interfaces work together - you can use npm commands or the GUI interchangeably!
 
 ---
 
@@ -239,17 +267,28 @@ curl -u panda:bamboo -H "X-APP-TOKEN: super-secret-token" \
 
 ---
 
-## 📦 Update Script
+## 📦 Available Commands
 
+### Server Management
 ```bash
-npm run update
+npm start              # Start TunnelPanda server
+npm run setup          # Interactive setup wizard
+npm run update         # Update application
 ```
 
-Runs (fast-forward only):
+### GUI Control Center
+```bash
+npm run electron       # Start Electron GUI (production)
+npm run electron-dev   # Start Electron GUI (development)
+npm run build-electron # Build distributable app
+npm run dist           # Create platform installers
+```
 
-- `git fetch --prune`
-- `git pull --ff-only`
-- `npm install --legacy-peer-deps`
+### Development
+```bash
+npm install            # Install dependencies
+npm audit fix          # Fix security vulnerabilities
+```
 
 ---
 

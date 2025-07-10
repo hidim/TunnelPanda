@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval';">
+    <title>TunnelPanda Control Center</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <i class="fas fa-shield-alt"></i>
+                    <h1>🐼 TunnelPanda</h1>
+                    <span class="version">Control Center</span>
+                </div>
+                <div class="status-indicators">
+                    <div class="status-item" id="server-indicator">
+                        <i class="fas fa-server"></i>
+                        <span>Server</span>
+                        <div class="status-dot" id="server-dot"></div>
+                    </div>
+                    <div class="status-item" id="tunnel-indicator">
+                        <i class="fas fa-cloud"></i>
+                        <span>Tunnel</span>
+                        <div class="status-dot" id="tunnel-dot"></div>
+                    </div>
+                    <div class="status-item" id="websocket-indicator">
+                        <i class="fas fa-plug"></i>
+                        <span>Monitor</span>
+                        <div class="status-dot" id="websocket-dot"></div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="sidebar">
+            <ul class="nav-list">
+                <li class="nav-item active" data-tab="dashboard">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Dashboard</span>
+                </li>
+                <li class="nav-item" data-tab="server">
+                    <i class="fas fa-server"></i>
+                    <span>Server Control</span>
+                </li>
+                <li class="nav-item" data-tab="security">
+                    <i class="fas fa-shield-alt"></i>
+                    <span>Security</span>
+                </li>
+                <li class="nav-item" data-tab="endpoints">
+                    <i class="fas fa-network-wired"></i>
+                    <span>Endpoints</span>
+                </li>
+                <li class="nav-item" data-tab="monitoring">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Monitoring</span>
+                </li>
+                <li class="nav-item" data-tab="database">
+                    <i class="fas fa-database"></i>
+                    <span>Database</span>
+                </li>
+                <li class="nav-item" data-tab="logs">
+                    <i class="fas fa-file-alt"></i>
+                    <span>Logs</span>
+                </li>
+                <li class="nav-item" data-tab="settings">
+                    <i class="fas fa-cog"></i>
+                    <span>Settings</span>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Dashboard Tab -->
+            <div class="tab-content active" id="dashboard">
+                <div class="tab-header">
+                    <h2>Dashboard</h2>
+                    <p>TunnelPanda Control Center Overview</p>
+                </div>
+                
+                <div class="dashboard-grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Quick Actions</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="button-group">
+                                <button class="btn btn-primary" id="start-all-btn">
+                                    <i class="fas fa-play"></i> Start All
+                                </button>
+                                <button class="btn btn-danger" id="stop-all-btn">
+                                    <i class="fas fa-stop"></i> Stop All
+                                </button>
+                                <button class="btn btn-warning" id="restart-all-btn">
+                                    <i class="fas fa-sync-alt"></i> Restart All
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>System Status</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="status-grid">
+                                <div class="status-card server-status">
+                                    <i class="fas fa-server"></i>
+                                    <div class="status-info">
+                                        <h4>TunnelPanda Server</h4>
+                                        <p id="server-status-text">Stopped</p>
+                                    </div>
+                                </div>
+                                <div class="status-card tunnel-status">
+                                    <i class="fas fa-cloud"></i>
+                                    <div class="status-info">
+                                        <h4>Cloudflare Tunnel</h4>
+                                        <p id="tunnel-status-text">Stopped</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Recent Activity</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="activity-feed" id="activity-feed">
+                                <div class="activity-item">
+                                    <i class="fas fa-info-circle"></i>
+                                    <span>TunnelPanda UI started</span>
+                                    <small class="timestamp" data-time="now">just now</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Connection Info</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="connection-info">
+                                <div class="info-item">
+                                    <label>Local URL:</label>
+                                    <span class="url-display" id="local-url">http://localhost:16014</span>
+                                    <button class="btn btn-sm" onclick="copyToClipboard('local-url')">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                                <div class="info-item">
+                                    <label>Tunnel URL:</label>
+                                    <span class="url-display" id="tunnel-url">Not configured</span>
+                                    <button class="btn btn-sm" onclick="copyToClipboard('tunnel-url')">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Server Control Tab -->
+            <div class="tab-content" id="server">
+                <div class="tab-header">
+                    <h2>Server Control</h2>
+                    <p>Manage TunnelPanda server and Cloudflare tunnel</p>
+                </div>
+
+                <div class="server-grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-server"></i> TunnelPanda Server</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="server-controls">
+                                <button class="btn btn-success" id="start-server-btn">
+                                    <i class="fas fa-play"></i> Start Server
+                                </button>
+                                <button class="btn btn-danger" id="stop-server-btn">
+                                    <i class="fas fa-stop"></i> Stop Server
+                                </button>
+                                <button class="btn btn-warning" id="restart-server-btn">
+                                    <i class="fas fa-sync-alt"></i> Restart Server
+                                </button>
+                            </div>
+                            <div class="server-info">
+                                <p>Status: <span id="server-status-detail">Stopped</span></p>
+                                <p>Port: <span id="server-port">16014</span></p>
+                                <p>Process: <span id="server-process">Not running</span></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-cloud"></i> Cloudflare Tunnel</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="tunnel-controls">
+                                <button class="btn btn-success" id="start-tunnel-btn">
+                                    <i class="fas fa-play"></i> Start Tunnel
+                                </button>
+                                <button class="btn btn-danger" id="stop-tunnel-btn">
+                                    <i class="fas fa-stop"></i> Stop Tunnel
+                                </button>
+                                <button class="btn btn-warning" id="restart-tunnel-btn">
+                                    <i class="fas fa-sync-alt"></i> Restart Tunnel
+                                </button>
+                            </div>
+                            <div class="tunnel-info">
+                                <p>Status: <span id="tunnel-status-detail">Stopped</span></p>
+                                <p>Config: <span id="tunnel-config">cloudflared/config.yml</span></p>
+                                <p>Process: <span id="tunnel-process">Not running</span></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card full-width">
+                        <div class="card-header">
+                            <h3><i class="fas fa-terminal"></i> TunnelPanda Server Console</h3>
+                            <button class="btn btn-sm" id="clear-server-console-btn">
+                                <i class="fas fa-trash"></i> Clear
+                            </button>
+                        </div>
+                        <div class="card-content">
+                            <div class="console" id="server-console">
+                                <div class="console-line">TunnelPanda server console ready...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card full-width">
+                        <div class="card-header">
+                            <h3><i class="fas fa-cloud"></i> Cloudflare Tunnel Console</h3>
+                            <button class="btn btn-sm" id="clear-tunnel-console-btn">
+                                <i class="fas fa-trash"></i> Clear
+                            </button>
+                        </div>
+                        <div class="card-content">
+                            <div class="console" id="tunnel-console">
+                                <div class="console-line">Cloudflare tunnel console ready...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Security Tab -->
+            <div class="tab-content" id="security">
+                <div class="tab-header">
+                    <h2>Security Configuration</h2>
+                    <p>Manage authentication, rate limiting, and IP restrictions</p>
+                </div>
+
+                <div class="security-grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-key"></i> Authentication</h3>
+                        </div>
+                        <div class="card-content">
+                            <form class="security-form" id="auth-form">
+                                <div class="form-group">
+                                    <label for="basic-auth-user">Basic Auth Username:</label>
+                                    <input type="text" id="basic-auth-user" name="basicAuthUser" placeholder="panda">
+                                </div>
+                                <div class="form-group">
+                                    <label for="basic-auth-pass">Basic Auth Password:</label>
+                                    <input type="password" id="basic-auth-pass" name="basicAuthPass" placeholder="bamboo">
+                                    <button type="button" class="btn btn-sm toggle-password" onclick="togglePassword('basic-auth-pass')">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                                <div class="form-group">
+                                    <label for="app-token">API Token (X-APP-TOKEN):</label>
+                                    <input type="password" id="app-token" name="appToken" placeholder="super-secret-token">
+                                    <button type="button" class="btn btn-sm toggle-password" onclick="togglePassword('app-token')">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm" onclick="generateToken('app-token')">
+                                        <i class="fas fa-sync-alt"></i> Generate
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-tachometer-alt"></i> Rate Limiting</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="rate-limit-settings">
+                                <div class="form-group">
+                                    <label for="rate-limit-window">Time Window (minutes):</label>
+                                    <input type="number" id="rate-limit-window" value="1" min="1" max="60">
+                                </div>
+                                <div class="form-group">
+                                    <label for="rate-limit-max">Max Requests:</label>
+                                    <input type="number" id="rate-limit-max" value="200" min="1" max="10000">
+                                </div>
+                                <div class="rate-limit-status">
+                                    <h4>Current Rate Limit Status</h4>
+                                    <div id="rate-limit-display">
+                                        <p>Loading...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-shield-alt"></i> Security Headers</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="security-headers">
+                                <div class="header-item">
+                                    <label>
+                                        <input type="checkbox" checked disabled> Helmet Security Headers
+                                    </label>
+                                    <small>Enabled by default for security</small>
+                                </div>
+                                <div class="header-item">
+                                    <label>
+                                        <input type="checkbox" checked disabled> Trust Proxy Headers
+                                    </label>
+                                    <small>Required for Cloudflare tunnel</small>
+                                </div>
+                                <div class="header-item">
+                                    <label>
+                                        <input type="checkbox" checked disabled> CORS Protection
+                                    </label>
+                                    <small>Cross-origin request protection</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-ban"></i> IP Restrictions</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="ip-restrictions">
+                                <p><strong>Note:</strong> IP restrictions are handled at the Cloudflare level for tunnel traffic.</p>
+                                <div class="ip-list">
+                                    <h4>Recent Client IPs:</h4>
+                                    <div id="client-ips">
+                                        <p>No recent connections</p>
+                                    </div>
+                                </div>
+                                <button class="btn btn-primary" onclick="refreshClientIPs()">
+                                    <i class="fas fa-sync-alt"></i> Refresh IPs
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card full-width">
+                        <div class="card-header">
+                            <h3><i class="fas fa-save"></i> Save Configuration</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="save-controls">
+                                <button class="btn btn-success" id="save-security-btn">
+                                    <i class="fas fa-save"></i> Save Security Settings
+                                </button>
+                                <button class="btn btn-secondary" id="reset-security-btn">
+                                    <i class="fas fa-undo"></i> Reset to Defaults
+                                </button>
+                                <div class="save-status" id="security-save-status"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Endpoints Tab -->
+            <div class="tab-content" id="endpoints">
+                <div class="tab-header">
+                    <h2>API Endpoints</h2>
+                    <p>Monitor and test TunnelPanda API endpoints</p>
+                </div>
+
+                <div class="endpoints-grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-list"></i> Available Endpoints</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="endpoints-list">
+                                <div class="endpoint-item">
+                                    <div class="endpoint-info">
+                                        <span class="method get">GET</span>
+                                        <span class="path">/health</span>
+                                        <span class="description">Health check</span>
+                                    </div>
+                                    <button class="btn btn-sm test-btn" onclick="testEndpoint('/health', 'GET')">
+                                        <i class="fas fa-play"></i> Test
+                                    </button>
+                                </div>
+                                <div class="endpoint-item">
+                                    <div class="endpoint-info">
+                                        <span class="method get">GET</span>
+                                        <span class="path">/api/tags</span>
+                                        <span class="description">List models</span>
+                                    </div>
+                                    <button class="btn btn-sm test-btn" onclick="testEndpoint('/api/tags', 'GET')">
+                                        <i class="fas fa-play"></i> Test
+                                    </button>
+                                </div>
+                                <div class="endpoint-item">
+                                    <div class="endpoint-info">
+                                        <span class="method post">POST</span>
+                                        <span class="path">/api/chat</span>
+                                        <span class="description">Chat with model</span>
+                                    </div>
+                                    <button class="btn btn-sm test-btn" onclick="testEndpoint('/api/chat', 'POST')">
+                                        <i class="fas fa-play"></i> Test
+                                    </button>
+                                </div>
+                                <div class="endpoint-item">
+                                    <div class="endpoint-info">
+                                        <span class="method post">POST</span>
+                                        <span class="path">/api/generate</span>
+                                        <span class="description">Generate completion</span>
+                                    </div>
+                                    <button class="btn btn-sm test-btn" onclick="testEndpoint('/api/generate', 'POST')">
+                                        <i class="fas fa-play"></i> Test
+                                    </button>
+                                </div>
+                                <div class="endpoint-item">
+                                    <div class="endpoint-info">
+                                        <span class="method post">POST</span>
+                                        <span class="path">/api/embeddings</span>
+                                        <span class="description">Create embeddings</span>
+                                    </div>
+                                    <button class="btn btn-sm test-btn" onclick="testEndpoint('/api/embeddings', 'POST')">
+                                        <i class="fas fa-play"></i> Test
+                                    </button>
+                                </div>
+                                <div class="endpoint-item">
+                                    <div class="endpoint-info">
+                                        <span class="method get">GET</span>
+                                        <span class="path">/db/status</span>
+                                        <span class="description">Database status</span>
+                                    </div>
+                                    <button class="btn btn-sm test-btn" onclick="testEndpoint('/db/status', 'GET')">
+                                        <i class="fas fa-play"></i> Test
+                                    </button>
+                                </div>
+                                <div class="endpoint-item">
+                                    <div class="endpoint-info">
+                                        <span class="method ws">WS</span>
+                                        <span class="path">/api/chat</span>
+                                        <span class="description">WebSocket chat</span>
+                                    </div>
+                                    <button class="btn btn-sm test-btn" onclick="testWebSocket('/api/chat')">
+                                        <i class="fas fa-plug"></i> Connect
+                                    </button>
+                                </div>
+                                <div class="endpoint-item">
+                                    <div class="endpoint-info">
+                                        <span class="method ws">WS</span>
+                                        <span class="path">/db/status</span>
+                                        <span class="description">Database monitoring</span>
+                                    </div>
+                                    <button class="btn btn-sm test-btn" onclick="testWebSocket('/db/status')">
+                                        <i class="fas fa-plug"></i> Connect
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-flask"></i> API Testing</h3>
+                            <button class="btn btn-sm" id="clear-test-btn">
+                                <i class="fas fa-trash"></i> Clear
+                            </button>
+                        </div>
+                        <div class="card-content">
+                            <div class="api-tester">
+                                <div class="test-controls">
+                                    <select id="test-method">
+                                        <option value="GET">GET</option>
+                                        <option value="POST">POST</option>
+                                        <option value="PUT">PUT</option>
+                                        <option value="DELETE">DELETE</option>
+                                    </select>
+                                    <input type="text" id="test-endpoint" placeholder="/api/endpoint" class="endpoint-input">
+                                    <button class="btn btn-primary" id="send-request-btn">
+                                        <i class="fas fa-paper-plane"></i> Send
+                                    </button>
+                                </div>
+                                <div class="test-body">
+                                    <label for="test-body-input">Request Body (JSON):</label>
+                                    <textarea id="test-body-input" placeholder='{"model": "phi4", "messages": [{"role": "user", "content": "Hello!"}]}'></textarea>
+                                </div>
+                                <div class="test-response">
+                                    <label>Response:</label>
+                                    <div class="response-display" id="test-response-display">
+                                        <p>No response yet</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Monitoring Tab -->
+            <div class="tab-content" id="monitoring">
+                <div class="tab-header">
+                    <h2>System Monitoring</h2>
+                    <p>Real-time monitoring and performance metrics</p>
+                </div>
+
+                <div class="monitoring-grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-chart-line"></i> Request Statistics</h3>
+                            <button class="btn btn-sm" onclick="refreshStats()">
+                                <i class="fas fa-sync-alt"></i> Refresh
+                            </button>
+                        </div>
+                        <div class="card-content">
+                            <div class="stats-display" id="request-stats">
+                                <div class="stat-item">
+                                    <span class="stat-label">Total Requests:</span>
+                                    <span class="stat-value" id="total-requests">0</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Unique IPs:</span>
+                                    <span class="stat-value" id="unique-ips">0</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Rate Limit Hits:</span>
+                                    <span class="stat-value" id="rate-limit-hits">0</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-network-wired"></i> WebSocket Connections</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="websocket-info">
+                                <div class="connection-status" id="ws-connection-status">
+                                    <p>Status: <span id="ws-status">Disconnected</span></p>
+                                    <p>Last Message: <span id="ws-last-message">None</span></p>
+                                </div>
+                                <div class="ws-controls">
+                                    <button class="btn btn-success" onclick="connectWebSocket()">
+                                        <i class="fas fa-plug"></i> Connect
+                                    </button>
+                                    <button class="btn btn-danger" onclick="disconnectWebSocket()">
+                                        <i class="fas fa-unplug"></i> Disconnect
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card full-width">
+                        <div class="card-header">
+                            <h3><i class="fas fa-list"></i> Real-time Activity</h3>
+                            <button class="btn btn-sm" onclick="clearActivity()">
+                                <i class="fas fa-trash"></i> Clear
+                            </button>
+                        </div>
+                        <div class="card-content">
+                            <div class="activity-monitor" id="activity-monitor">
+                                <div class="activity-item">
+                                    <span class="timestamp">[Loading...]</span>
+                                    <span class="message">Waiting for activity...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card full-width">
+                        <div class="card-header">
+                            <h3><i class="fas fa-users"></i> Client IP Analysis</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="ip-analysis" id="ip-analysis">
+                                <p>Loading IP data...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Database Tab -->
+            <div class="tab-content" id="database">
+                <div class="tab-header">
+                    <h2>Database Management</h2>
+                    <p>Monitor and manage vector database connections</p>
+                </div>
+
+                <div class="database-grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-cog"></i> Database Configuration</h3>
+                        </div>
+                        <div class="card-content">
+                            <form class="db-config-form" id="db-config-form">
+                                <div class="form-group">
+                                    <label for="db-provider">Provider:</label>
+                                    <select id="db-provider" name="dbProvider">
+                                        <option value="">Select provider...</option>
+                                        <option value="chroma">ChromaDB</option>
+                                        <option value="milvus">Milvus</option>
+                                        <option value="pinecone">Pinecone</option>
+                                        <option value="qdrant">Qdrant</option>
+                                        <option value="redis">Redis</option>
+                                        <option value="sqlite">SQLite</option>
+                                        <option value="postgres">PostgreSQL</option>
+                                        <option value="mysql">MySQL</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="db-url">Database URL:</label>
+                                    <input type="text" id="db-url" name="dbUrl" placeholder="http://localhost:8000">
+                                </div>
+                                <div class="form-group">
+                                    <label for="db-api-key">API Key:</label>
+                                    <input type="password" id="db-api-key" name="dbApiKey" placeholder="optional">
+                                    <button type="button" class="btn btn-sm toggle-password" onclick="togglePassword('db-api-key')">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                                <div class="form-group">
+                                    <label for="db-tenant">Tenant:</label>
+                                    <input type="text" id="db-tenant" name="dbTenant" placeholder="default_tenant">
+                                </div>
+                                <div class="form-group">
+                                    <label for="db-database">Database:</label>
+                                    <input type="text" id="db-database" name="dbDatabase" placeholder="default_database">
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-heartbeat"></i> Connection Status</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="db-status" id="db-status">
+                                <div class="status-item">
+                                    <span class="status-dot disconnected"></span>
+                                    <span>Connection: Disconnected</span>
+                                </div>
+                                <div class="db-info">
+                                    <p>Provider: <span id="current-db-provider">Not configured</span></p>
+                                    <p>URL: <span id="current-db-url">Not configured</span></p>
+                                    <p>Tenant: <span id="current-db-tenant">Not configured</span></p>
+                                    <p>Database: <span id="current-db-database">Not configured</span></p>
+                                </div>
+                                <button class="btn btn-primary" onclick="testDbConnection()">
+                                    <i class="fas fa-plug"></i> Test Connection
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-folder"></i> Collections</h3>
+                            <button class="btn btn-sm" onclick="refreshCollections()">
+                                <i class="fas fa-sync-alt"></i> Refresh
+                            </button>
+                        </div>
+                        <div class="card-content">
+                            <div class="collections-list" id="collections-list">
+                                <p>No collections available</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-chart-bar"></i> Database Statistics</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="db-stats" id="db-stats">
+                                <div class="stat-item">
+                                    <span class="stat-label">Total Collections:</span>
+                                    <span class="stat-value" id="total-collections">0</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Total Records:</span>
+                                    <span class="stat-value" id="total-records">0</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Last Operation:</span>
+                                    <span class="stat-value" id="last-operation">None</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card full-width">
+                        <div class="card-header">
+                            <h3><i class="fas fa-activity"></i> Database Activity</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="db-activity" id="db-activity">
+                                <p>No recent database activity</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Logs Tab -->
+            <div class="tab-content" id="logs">
+                <div class="tab-header">
+                    <h2>System Logs</h2>
+                    <p>View and analyze TunnelPanda logs</p>
+                </div>
+
+                <div class="logs-grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-list"></i> Log Files</h3>
+                            <button class="btn btn-sm" onclick="refreshLogs()">
+                                <i class="fas fa-sync-alt"></i> Refresh
+                            </button>
+                        </div>
+                        <div class="card-content">
+                            <div class="log-files" id="log-files">
+                                <p>Loading log files...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-filter"></i> Log Filters</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="log-filters">
+                                <div class="form-group">
+                                    <label for="log-level">Level:</label>
+                                    <select id="log-level">
+                                        <option value="">All Levels</option>
+                                        <option value="error">Error</option>
+                                        <option value="warn">Warning</option>
+                                        <option value="info">Info</option>
+                                        <option value="debug">Debug</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="log-search">Search:</label>
+                                    <input type="text" id="log-search" placeholder="Search in logs...">
+                                </div>
+                                <button class="btn btn-primary" onclick="filterLogs()">
+                                    <i class="fas fa-search"></i> Filter
+                                </button>
+                                <button class="btn btn-secondary" onclick="clearLogFilters()">
+                                    <i class="fas fa-times"></i> Clear
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card full-width">
+                        <div class="card-header">
+                            <h3><i class="fas fa-file-alt"></i> Log Viewer</h3>
+                            <div class="log-controls">
+                                <button class="btn btn-sm" onclick="exportLogs()">
+                                    <i class="fas fa-download"></i> Export
+                                </button>
+                                <button class="btn btn-sm" onclick="clearLogViewer()">
+                                    <i class="fas fa-trash"></i> Clear
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-content">
+                            <div class="log-viewer" id="log-viewer">
+                                <div class="log-line">
+                                    <span class="log-timestamp">[Loading...]</span>
+                                    <span class="log-level info">[INFO]</span>
+                                    <span class="log-message">Loading log files...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Tab -->
+            <div class="tab-content" id="settings">
+                <div class="tab-header">
+                    <h2>Application Settings</h2>
+                    <p>Configure TunnelPanda application settings</p>
+                </div>
+
+                <div class="settings-grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-server"></i> Server Settings</h3>
+                        </div>
+                        <div class="card-content">
+                            <form class="settings-form" id="server-settings-form">
+                                <div class="form-group">
+                                    <label for="server-port">Port:</label>
+                                    <input type="number" id="server-port" name="port" min="1" max="65535" value="16014">
+                                </div>
+                                <div class="form-group">
+                                    <label for="request-limit">Request Size Limit:</label>
+                                    <input type="text" id="request-limit" name="requestLimit" value="10mb">
+                                    <small>Examples: 10mb, 1gb, 500kb</small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="payload-threshold">Large Payload Threshold (bytes):</label>
+                                    <input type="number" id="payload-threshold" name="payloadThreshold" min="1000" value="50000">
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-brain"></i> Ollama Settings</h3>
+                        </div>
+                        <div class="card-content">
+                            <form class="settings-form" id="ollama-settings-form">
+                                <div class="form-group">
+                                    <label for="ollama-url">Ollama API URL:</label>
+                                    <input type="url" id="ollama-url" name="ollamaUrl" value="http://localhost:11434">
+                                </div>
+                                <div class="form-group">
+                                    <label for="ollama-api-key">Ollama API Key:</label>
+                                    <input type="password" id="ollama-api-key" name="ollamaApiKey" placeholder="Optional">
+                                    <button type="button" class="btn btn-sm toggle-password" onclick="togglePassword('ollama-api-key')">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                                <button type="button" class="btn btn-primary" onclick="testOllamaConnection()">
+                                    <i class="fas fa-plug"></i> Test Connection
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-cog"></i> UI Preferences</h3>
+                        </div>
+                        <div class="card-content">
+                            <form class="settings-form" id="ui-settings-form">
+                                <div class="form-group">
+                                    <label>Theme:</label>
+                                    <div class="radio-group">
+                                        <label>
+                                            <input type="radio" name="theme" value="dark" checked>
+                                            <span>Dark</span>
+                                        </label>
+                                        <label>
+                                            <input type="radio" name="theme" value="light">
+                                            <span>Light</span>
+                                        </label>
+                                        <label>
+                                            <input type="radio" name="theme" value="auto">
+                                            <span>Auto</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>
+                                        <input type="checkbox" id="auto-refresh" checked>
+                                        Auto-refresh monitoring data
+                                    </label>
+                                </div>
+                                <div class="form-group">
+                                    <label for="refresh-interval">Refresh Interval (seconds):</label>
+                                    <input type="number" id="refresh-interval" min="1" max="300" value="30">
+                                </div>
+                                <div class="form-group">
+                                    <label>
+                                        <input type="checkbox" id="minimize-to-tray">
+                                        Minimize to system tray
+                                    </label>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-info-circle"></i> Application Info</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="app-info">
+                                <div class="info-item">
+                                    <label>Version:</label>
+                                    <span id="app-version">1.0.0</span>
+                                </div>
+                                <div class="info-item">
+                                    <label>Node.js Version:</label>
+                                    <span id="node-version">Loading...</span>
+                                </div>
+                                <div class="info-item">
+                                    <label>Electron Version:</label>
+                                    <span id="electron-version">Loading...</span>
+                                </div>
+                                <div class="info-item">
+                                    <label>Platform:</label>
+                                    <span id="platform">Loading...</span>
+                                </div>
+                                <div class="info-item">
+                                    <label>Configuration:</label>
+                                    <button class="btn btn-sm" onclick="showConfigLocation()">
+                                        <i class="fas fa-folder"></i> Show Location
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card full-width">
+                        <div class="card-header">
+                            <h3><i class="fas fa-save"></i> Save All Settings</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="save-all-controls">
+                                <button class="btn btn-success" id="save-all-settings-btn">
+                                    <i class="fas fa-save"></i> Save All Settings
+                                </button>
+                                <button class="btn btn-secondary" id="reset-all-settings-btn">
+                                    <i class="fas fa-undo"></i> Reset to Defaults
+                                </button>
+                                <button class="btn btn-primary" id="export-config-btn">
+                                    <i class="fas fa-download"></i> Export Config
+                                </button>
+                                <button class="btn btn-primary" id="import-config-btn">
+                                    <i class="fas fa-upload"></i> Import Config
+                                </button>
+                                <div class="save-status" id="settings-save-status"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Load modules first -->
+    <script src="modules/themes.js"></script>
+    <script src="modules/serverControl.js"></script>
+    <!-- Main application -->
+    <script src="app.js"></script>
+</body>
+</html>
