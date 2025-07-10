@@ -117,7 +117,7 @@ curl -u panda:bamboo \
 ```bash
 curl -u panda:bamboo \
      -H "X-APP-TOKEN: super-secret-token" \
-     http://localhost:16014/api/tags
+     https://api.domain.com/api/tags
 ```
 
 ### 🧩 Create Embeddings
@@ -144,7 +144,7 @@ curl -u panda:bamboo \
 ```
 
 ### 📡 DB Status WebSocket
-Connect to `ws://localhost:16014/db/status` with the same authentication. On
+Connect to `wss://api.domain.com/db/status` with the same authentication. On
 connect you'll receive a JSON map of collection counts:
 
 ```json
@@ -158,7 +158,7 @@ Every time new items are added the server broadcasts `{ "collection": "<name>",
 
 ## 🧪 WebSocket Example
 
-**URL**: `ws://localhost:16014/api/chat`
+**URL**: `wss://api.domain.com/api/chat`
 
 ```js
 const ws = new WebSocket('ws://localhost:16014/api/chat');
