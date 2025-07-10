@@ -169,23 +169,37 @@ class TunnelPandaApp {
     try {
       this.tunnelPandaProcess = fork(appPath, [], {
         cwd: path.join(__dirname, '..'),
-        silent: false,
+        silent: true,
         stdio: ['pipe', 'pipe', 'pipe', 'ipc']
       });
 
       this.tunnelPandaProcess.on('message', (message) => {
         console.log('Server message:', message);
-        this.sendToRenderer('server-message', message);
+        if (message.type === 'log') {
+          const logMessage = `[${message.level.toUpperCase()}] ${message.message}`;
+          this.sendToRenderer('server-message', logMessage);
+        } else if (message.type === 'ready') {
+          this.sendToRenderer('server-message', `✅ ${message.message}`);
+          this.sendToRenderer('server-status', { 
+            running: true, 
+            message: 'TunnelPanda server is ready',
+            port: message.port
+          });
+        } else {
+          this.sendToRenderer('server-message', JSON.stringify(message));
+        }
       });
 
       this.tunnelPandaProcess.stdout?.on('data', (data) => {
-        console.log('Server stdout:', data.toString());
-        this.sendToRenderer('server-message', data.toString());
+        const output = data.toString();
+        console.log('Server stdout:', output);
+        this.sendToRenderer('server-message', output);
       });
 
       this.tunnelPandaProcess.stderr?.on('data', (data) => {
-        console.error('Server stderr:', data.toString());
-        this.sendToRenderer('server-error', data.toString());
+        const output = data.toString();
+        console.error('Server stderr:', output);
+        this.sendToRenderer('server-error', output);
       });
 
       this.tunnelPandaProcess.on('error', (error) => {
@@ -295,13 +309,25 @@ class TunnelPandaApp {
   // WebSocket connection for monitoring
   connectWebSocket() {
     try {
-      // Connect to status WebSocket
-      this.statusWsConnection = new WebSocket('ws://localhost:16014/db/status', {
+      // Load config to get authentication details
+      const configPath = path.join(__dirname, '..', 'src', 'config.js');
+      delete require.cache[require.resolve(configPath)]; // Clear cache to get fresh config
+      const config = require(configPath);
+      
+      // Use default values if config values are empty
+      const username = config.auth.user || 'panda';
+      const password = config.auth.pass || 'bamboo';
+      const token = config.auth.appToken || 'super-secret-token';
+      
+      // Connect to status WebSocket with proper authentication
+      const wsOptions = {
         headers: {
-          'Authorization': 'Basic ' + Buffer.from('panda:bamboo').toString('base64'),
-          'X-APP-TOKEN': 'super-secret-token'
+          'Authorization': 'Basic ' + Buffer.from(`${username}:${password}`).toString('base64'),
+          'X-APP-TOKEN': token
         }
-      });
+      };
+      
+      this.statusWsConnection = new WebSocket('ws://localhost:16014/db/status', wsOptions);
 
       this.statusWsConnection.on('open', () => {
         this.sendToRenderer('websocket-status', { connected: true });

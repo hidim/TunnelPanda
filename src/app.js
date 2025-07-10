@@ -27,6 +27,22 @@ const cfg = require('./config');
 const PORT = cfg.port;
 const collectionCounts = {};
 
+// Check if running under Electron (forked process)
+const isElectronChild = process.send !== undefined;
+
+// Enhanced logging for Electron
+function electronLog(message, level = 'info') {
+  if (isElectronChild && process.send) {
+    process.send({ type: 'log', level, message, timestamp: new Date().toISOString() });
+  }
+  console.log(`[${level.toUpperCase()}] ${message}`);
+}
+
+// Log startup information
+electronLog('🐼 TunnelPanda server initializing...');
+electronLog(`Environment: ${process.env.NODE_ENV || 'development'}`);
+electronLog(`Port: ${PORT}`);
+
 // Make collection counts globally accessible
 global.collectionCounts = collectionCounts;
 
@@ -50,16 +66,24 @@ app.use((req, res, next) => {
 });
 
 // Middleware
+electronLog('Setting up middleware...');
 app.use(helmet());
 app.use(express.json({ limit: cfg.requestLimit })); // Use configurable limit
 app.use(express.urlencoded({ limit: cfg.requestLimit, extended: true })); // Use configurable limit
 app.use(morgan('combined'));
+
+// Enhanced logging middleware for Electron
+app.use((req, res, next) => {
+  electronLog(`${req.method} ${req.path} - ${req.ip}`);
+  next();
+});
 
 // Body size logging
 app.use((req, res, next) => {
   // Logs if request body is larger than the configured threshold.
   if (req.body && JSON.stringify(req.body).length > cfg.largePayloadThreshold) {
     logger.warn({ msg: 'Large payload', path: req.path, length: JSON.stringify(req.body).length, threshold: cfg.largePayloadThreshold });
+    electronLog(`⚠️ Large payload detected: ${req.path} (${JSON.stringify(req.body).length} bytes)`, 'warn');
   }
   next();
 });
@@ -74,12 +98,15 @@ app.use(rateLimit({
 }));
 
 // Authentication
+electronLog('Setting up authentication...');
 app.use(authenticate);
 
 // Routes
+electronLog('Setting up routes...');
 app.use('/', require('./routes/health'));
 app.use('/', require('./routes/ollama'));
 app.use('/db', dbRouter);
+electronLog('Routes configured: /, /api/*, /db/*');
 
 // Internal endpoint: rate status
 app.get('/_internal/rate-status', (req, res) => {
@@ -467,9 +494,15 @@ if (require.main === module) {
 
   // Start HTTP server
   httpServer.listen(PORT, () => {
-    logger.info(`🐼 TunnelPanda listening on http://localhost:${PORT}`);
-    logger.info('📡 WebSocket: /api/chat');
-    logger.info('📡 WebSocket: /db/status');
+    electronLog(`🐼 TunnelPanda listening on http://localhost:${PORT}`);
+    electronLog('📡 WebSocket: /api/chat');
+    electronLog('📡 WebSocket: /db/status');
+    electronLog('✅ Server started successfully');
+    
+    // Send ready message to Electron
+    if (isElectronChild && process.send) {
+      process.send({ type: 'ready', port: PORT, message: 'TunnelPanda server is ready' });
+    }
   });
 }
 
