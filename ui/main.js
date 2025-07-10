@@ -22,6 +22,21 @@ class TunnelPandaApp {
 
   createWindow() {
     // Create the browser window
+    const iconPath = path.join(__dirname, 'assets', 'app.png');
+    const fallbackIconPath = path.join(__dirname, 'assets', 'icon.png');
+    
+    // Use app.png if it exists, otherwise fallback to icon.png
+    let windowIcon;
+    try {
+      if (fs.existsSync(iconPath)) {
+        windowIcon = iconPath;
+      } else if (fs.existsSync(fallbackIconPath)) {
+        windowIcon = fallbackIconPath;
+      }
+    } catch (error) {
+      console.warn('Icon file check failed:', error);
+    }
+
     this.mainWindow = new BrowserWindow({
       width: 1400,
       height: 900,
@@ -33,7 +48,8 @@ class TunnelPandaApp {
         preload: path.join(__dirname, 'preload.js')
       },
       titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
-      icon: path.join(__dirname, 'assets', 'app.png')
+      icon: windowIcon,
+      title: 'TunnelPanda Control Center'
     });
 
     // Load the app
@@ -137,44 +153,73 @@ class TunnelPandaApp {
       return;
     }
 
+    console.log('Starting TunnelPanda server...');
+    
     const appPath = path.join(__dirname, '..', 'src', 'app.js');
-    this.tunnelPandaProcess = fork(appPath, [], {
-      cwd: path.join(__dirname, '..'),
-      silent: false
-    });
+    console.log('Server path:', appPath);
+    
+    // Check if the app.js file exists
+    if (!fs.existsSync(appPath)) {
+      const error = `Server file not found: ${appPath}`;
+      console.error(error);
+      this.sendToRenderer('server-error', error);
+      return;
+    }
 
-    this.tunnelPandaProcess.on('message', (message) => {
-      this.sendToRenderer('server-message', message);
-    });
-
-    this.tunnelPandaProcess.stdout?.on('data', (data) => {
-      this.sendToRenderer('server-message', data.toString());
-    });
-
-    this.tunnelPandaProcess.stderr?.on('data', (data) => {
-      this.sendToRenderer('server-error', data.toString());
-    });
-
-    this.tunnelPandaProcess.on('error', (error) => {
-      this.sendToRenderer('server-error', error.message);
-    });
-
-    this.tunnelPandaProcess.on('exit', (code) => {
-      this.isServerRunning = false;
-      this.sendToRenderer('server-status', { 
-        running: false, 
-        message: `Server stopped with code ${code}` 
+    try {
+      this.tunnelPandaProcess = fork(appPath, [], {
+        cwd: path.join(__dirname, '..'),
+        silent: false,
+        stdio: ['pipe', 'pipe', 'pipe', 'ipc']
       });
-    });
 
-    this.isServerRunning = true;
-    this.sendToRenderer('server-status', { 
-      running: true, 
-      message: 'TunnelPanda server started' 
-    });
+      this.tunnelPandaProcess.on('message', (message) => {
+        console.log('Server message:', message);
+        this.sendToRenderer('server-message', message);
+      });
 
-    // Try to connect WebSocket for monitoring
-    setTimeout(() => this.connectWebSocket(), 2000);
+      this.tunnelPandaProcess.stdout?.on('data', (data) => {
+        console.log('Server stdout:', data.toString());
+        this.sendToRenderer('server-message', data.toString());
+      });
+
+      this.tunnelPandaProcess.stderr?.on('data', (data) => {
+        console.error('Server stderr:', data.toString());
+        this.sendToRenderer('server-error', data.toString());
+      });
+
+      this.tunnelPandaProcess.on('error', (error) => {
+        console.error('Server process error:', error);
+        this.isServerRunning = false;
+        this.sendToRenderer('server-error', error.message);
+        this.sendToRenderer('server-status', { running: false, message: 'Failed to start server' });
+      });
+
+      this.tunnelPandaProcess.on('spawn', () => {
+        console.log('Server process spawned successfully');
+        this.isServerRunning = true;
+        this.sendToRenderer('server-status', { 
+          running: true, 
+          message: 'TunnelPanda server started' 
+        });
+        // Try to connect WebSocket for monitoring
+        setTimeout(() => this.connectWebSocket(), 2000);
+      });
+
+      this.tunnelPandaProcess.on('exit', (code) => {
+        console.log('Server process exited with code:', code);
+        this.isServerRunning = false;
+        this.sendToRenderer('server-status', { 
+          running: false, 
+          message: `Server stopped with code ${code}` 
+        });
+      });
+
+    } catch (error) {
+      console.error('Failed to start server:', error);
+      this.sendToRenderer('server-error', error.message);
+      this.sendToRenderer('server-status', { running: false, message: 'Failed to start server' });
+    }
   }
 
   stopServer() {

@@ -1,4 +1,4 @@
-// ui/app.js - TunnelPanda Control Center (Simplified)
+// ui/app.js - TunnelPanda Control Center JavaScript
 class TunnelPandaUI {
   constructor() {
     this.activeTab = 'dashboard';
@@ -9,17 +9,10 @@ class TunnelPandaUI {
     this.refreshInterval = null;
     this.activityBuffer = [];
 
-    // Initialize modules
-    this.themeManager = new ThemeManager();
-    this.serverControl = new ServerControl(this);
-
     this.init();
   }
 
   async init() {
-    // Initialize theme
-    await this.themeManager.init();
-    
     this.setupEventListeners();
     this.setupIpcListeners();
     await this.loadConfig();
@@ -37,23 +30,23 @@ class TunnelPandaUI {
       });
     });
 
-    // Server controls - delegate to serverControl module
-    document.getElementById('start-server-btn')?.addEventListener('click', () => this.serverControl.startServer());
-    document.getElementById('stop-server-btn')?.addEventListener('click', () => this.serverControl.stopServer());
-    document.getElementById('restart-server-btn')?.addEventListener('click', () => this.serverControl.restartServer());
+    // Server controls
+    document.getElementById('start-server-btn')?.addEventListener('click', () => this.startServer());
+    document.getElementById('stop-server-btn')?.addEventListener('click', () => this.stopServer());
+    document.getElementById('restart-server-btn')?.addEventListener('click', () => this.restartServer());
 
-    document.getElementById('start-tunnel-btn')?.addEventListener('click', () => this.serverControl.startTunnel());
-    document.getElementById('stop-tunnel-btn')?.addEventListener('click', () => this.serverControl.stopTunnel());
-    document.getElementById('restart-tunnel-btn')?.addEventListener('click', () => this.serverControl.restartTunnel());
+    document.getElementById('start-tunnel-btn')?.addEventListener('click', () => this.startTunnel());
+    document.getElementById('stop-tunnel-btn')?.addEventListener('click', () => this.stopTunnel());
+    document.getElementById('restart-tunnel-btn')?.addEventListener('click', () => this.restartTunnel());
 
     // Quick actions
-    document.getElementById('start-all-btn')?.addEventListener('click', () => this.serverControl.startAll());
-    document.getElementById('stop-all-btn')?.addEventListener('click', () => this.serverControl.stopAll());
-    document.getElementById('restart-all-btn')?.addEventListener('click', () => this.serverControl.restartAll());
+    document.getElementById('start-all-btn')?.addEventListener('click', () => this.startAll());
+    document.getElementById('stop-all-btn')?.addEventListener('click', () => this.stopAll());
+    document.getElementById('restart-all-btn')?.addEventListener('click', () => this.restartAll());
 
     // Console clear buttons
-    document.getElementById('clear-server-console')?.addEventListener('click', () => this.serverControl.clearServerConsole());
-    document.getElementById('clear-tunnel-console')?.addEventListener('click', () => this.serverControl.clearTunnelConsole());
+    document.getElementById('clear-server-console')?.addEventListener('click', () => this.clearServerConsole());
+    document.getElementById('clear-tunnel-console')?.addEventListener('click', () => this.clearTunnelConsole());
 
     // Security form
     document.getElementById('save-security-btn')?.addEventListener('click', () => this.saveSecuritySettings());
@@ -125,6 +118,77 @@ class TunnelPandaUI {
     });
   }
 
+  // Server control methods
+  async startServer() {
+    try {
+      await window.electronAPI.startServer();
+      this.addActivity('server', 'Starting server...', 'info');
+    } catch (error) {
+      this.addActivity('server', `Failed to start server: ${error}`, 'error');
+    }
+  }
+
+  async stopServer() {
+    try {
+      await window.electronAPI.stopServer();
+      this.addActivity('server', 'Stopping server...', 'info');
+    } catch (error) {
+      this.addActivity('server', `Failed to stop server: ${error}`, 'error');
+    }
+  }
+
+  async restartServer() {
+    try {
+      await window.electronAPI.restartServer();
+      this.addActivity('server', 'Restarting server...', 'info');
+    } catch (error) {
+      this.addActivity('server', `Failed to restart server: ${error}`, 'error');
+    }
+  }
+
+  async startTunnel() {
+    try {
+      await window.electronAPI.startTunnel();
+      this.addActivity('tunnel', 'Starting tunnel...', 'info');
+    } catch (error) {
+      this.addActivity('tunnel', `Failed to start tunnel: ${error}`, 'error');
+    }
+  }
+
+  async stopTunnel() {
+    try {
+      await window.electronAPI.stopTunnel();
+      this.addActivity('tunnel', 'Stopping tunnel...', 'info');
+    } catch (error) {
+      this.addActivity('tunnel', `Failed to stop tunnel: ${error}`, 'error');
+    }
+  }
+
+  async restartTunnel() {
+    try {
+      await window.electronAPI.restartTunnel();
+      this.addActivity('tunnel', 'Restarting tunnel...', 'info');
+    } catch (error) {
+      this.addActivity('tunnel', `Failed to restart tunnel: ${error}`, 'error');
+    }
+  }
+
+  async startAll() {
+    await this.startServer();
+    setTimeout(() => this.startTunnel(), 2000);
+  }
+
+  async stopAll() {
+    await this.stopTunnel();
+    await this.stopServer();
+  }
+
+  async restartAll() {
+    await this.stopAll();
+    setTimeout(() => this.startAll(), 3000);
+  }
+
+  // UI Navigation
   showTab(tabName) {
     // Update navigation
     document.querySelectorAll('.nav-item').forEach(item => {
@@ -170,6 +234,7 @@ class TunnelPandaUI {
     }
   }
 
+  // Configuration
   async loadConfig() {
     try {
       this.config = await window.electronAPI.getConfig();
@@ -186,26 +251,24 @@ class TunnelPandaUI {
   }
 
   updateStatusIndicators() {
-    const serverStatus = document.getElementById('server-status');
-    const tunnelStatus = document.getElementById('tunnel-status');
-    const wsStatus = document.getElementById('ws-status');
+    const serverDot = document.getElementById('server-dot');
+    const tunnelDot = document.getElementById('tunnel-dot');
+    const websocketDot = document.getElementById('websocket-dot');
 
-    if (serverStatus) {
-      serverStatus.textContent = this.serverRunning ? 'Server: Running' : 'Server: Stopped';
-      serverStatus.className = `status-item ${this.serverRunning ? 'success' : 'error'}`;
+    if (serverDot) {
+      serverDot.className = `status-dot ${this.serverRunning ? 'success' : 'error'}`;
     }
 
-    if (tunnelStatus) {
-      tunnelStatus.textContent = this.tunnelRunning ? 'Tunnel: Connected' : 'Tunnel: Disconnected';
-      tunnelStatus.className = `status-item ${this.tunnelRunning ? 'success' : 'error'}`;
+    if (tunnelDot) {
+      tunnelDot.className = `status-dot ${this.tunnelRunning ? 'success' : 'error'}`;
     }
 
-    if (wsStatus) {
-      wsStatus.textContent = this.wsConnected ? 'Monitor: Connected' : 'Monitor: Disconnected';
-      wsStatus.className = `status-item ${this.wsConnected ? 'success' : 'warning'}`;
+    if (websocketDot) {
+      websocketDot.className = `status-dot ${this.wsConnected ? 'success' : 'warning'}`;
     }
   }
 
+  // Activity Feed
   addActivity(type, message, level = 'info') {
     const timestamp = new Date().toLocaleTimeString();
     const activity = { timestamp, type, message, level };
@@ -231,6 +294,7 @@ class TunnelPandaUI {
     `).join('');
   }
 
+  // Console Methods
   addServerConsoleMessage(message, type = 'info') {
     this.addConsoleMessage('server-console', message, type);
   }
@@ -257,32 +321,138 @@ class TunnelPandaUI {
     }
   }
 
+  clearServerConsole() {
+    const console = document.getElementById('server-console');
+    if (console) {
+      console.innerHTML = '';
+    }
+  }
+
+  clearTunnelConsole() {
+    const console = document.getElementById('tunnel-console');
+    if (console) {
+      console.innerHTML = '';
+    }
+  }
+
+  // Auto-refresh
   startAutoRefresh() {
     this.refreshInterval = setInterval(() => {
       this.updateUI();
     }, 30000); // Refresh every 30 seconds
   }
 
-  // Simplified placeholder methods - implement as needed
-  async updateDashboard() { /* Dashboard update logic */ }
-  async loadSecuritySettings() { /* Security settings logic */ }
-  async saveSecuritySettings() { /* Save security logic */ }
-  async resetSecuritySettings() { /* Reset security logic */ }
-  async loadEndpointSettings() { /* Endpoint settings logic */ }
-  async saveEndpointSettings() { /* Save endpoint logic */ }
-  async resetEndpointSettings() { /* Reset endpoint logic */ }
-  async loadMonitoringData() { /* Monitoring data logic */ }
-  async loadDatabaseInfo() { /* Database info logic */ }
-  async loadLogs() { /* Load logs logic */ }
-  async clearLogs() { /* Clear logs logic */ }
-  async exportLogs() { /* Export logs logic */ }
-  async loadSettings() { /* Load settings logic */ }
-  async saveSettings() { /* Save settings logic */ }
-  async resetSettings() { /* Reset settings logic */ }
-  updateServerStatus(data) { /* Server status update logic */ }
-  updateTunnelStatus(data) { /* Tunnel status update logic */ }
-  updateWebSocketStatus(data) { /* WebSocket status update logic */ }
-  handleWebSocketMessage(data) { /* WebSocket message handling */ }
+  // Status update methods
+  updateServerStatus(data) {
+    const statusElement = document.getElementById('server-status-text');
+    if (statusElement) {
+      statusElement.textContent = data.message;
+    }
+  }
+
+  updateTunnelStatus(data) {
+    const statusElement = document.getElementById('tunnel-status-text');
+    if (statusElement) {
+      statusElement.textContent = data.message;
+    }
+  }
+
+  updateWebSocketStatus(data) {
+    const statusElement = document.getElementById('websocket-status-text');
+    if (statusElement) {
+      statusElement.textContent = data.connected ? 'Connected' : 'Disconnected';
+    }
+  }
+
+  handleWebSocketMessage(data) {
+    // Handle WebSocket messages for real-time updates
+    console.log('WebSocket message:', data);
+  }
+
+  // Placeholder methods for future implementation
+  async updateDashboard() {
+    // Dashboard update logic
+    this.updateStatusIndicators();
+  }
+
+  async loadSecuritySettings() {
+    // Security settings logic
+    const config = this.config;
+    const form = document.getElementById('security-form');
+    if (form && config) {
+      const inputs = form.querySelectorAll('input');
+      inputs.forEach(input => {
+        if (config[input.name]) {
+          input.value = config[input.name];
+        }
+      });
+    }
+  }
+
+  async saveSecuritySettings() {
+    // Save security logic
+    console.log('Saving security settings...');
+  }
+
+  async resetSecuritySettings() {
+    // Reset security logic
+    console.log('Resetting security settings...');
+  }
+
+  async loadEndpointSettings() {
+    // Endpoint settings logic
+    console.log('Loading endpoint settings...');
+  }
+
+  async saveEndpointSettings() {
+    // Save endpoint logic
+    console.log('Saving endpoint settings...');
+  }
+
+  async resetEndpointSettings() {
+    // Reset endpoint logic
+    console.log('Resetting endpoint settings...');
+  }
+
+  async loadMonitoringData() {
+    // Monitoring data logic
+    console.log('Loading monitoring data...');
+  }
+
+  async loadDatabaseInfo() {
+    // Database info logic
+    console.log('Loading database info...');
+  }
+
+  async loadLogs() {
+    // Load logs logic
+    console.log('Loading logs...');
+  }
+
+  async clearLogs() {
+    // Clear logs logic
+    console.log('Clearing logs...');
+  }
+
+  async exportLogs() {
+    // Export logs logic
+    console.log('Exporting logs...');
+  }
+
+  async loadSettings() {
+    // Load settings logic
+    console.log('Loading settings...');
+  }
+
+  async saveSettings() {
+    // Save settings logic
+    console.log('Saving settings...');
+  }
+
+  async resetSettings() {
+    // Reset settings logic
+    console.log('Resetting settings...');
+  }
 }
 
 // Initialize the application when DOM is loaded
