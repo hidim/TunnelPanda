@@ -664,9 +664,15 @@ class TunnelPandaUI {
       const id = data.ids[i];
       const doc = JSON.stringify(data.documents?.[i]);
       const meta = JSON.stringify(data.metadatas?.[i]);
-      rows.push(`<tr onclick="previewRecord(${i})"><td>${this.escapeHtml(id)}</td><td>${this.escapeHtml(this.truncate(doc,60))}</td><td>${this.escapeHtml(this.truncate(meta,60))}</td></tr>`);
+      const row = document.createElement('tr');
+      row.innerHTML = `<td>${this.escapeHtml(id)}</td><td>${this.escapeHtml(this.truncate(doc,60))}</td><td>${this.escapeHtml(this.truncate(meta,60))}</td>`;
+      row.addEventListener('click', () => this.previewRecord(i));
+      rows.push(row);
     }
-    table.innerHTML = `<thead><tr><th>ID</th><th>Document</th><th>Metadata</th></tr></thead><tbody>${rows.join('')}</tbody>`;
+    table.innerHTML = `<thead><tr><th>ID</th><th>Document</th><th>Metadata</th></tr></thead>`;
+    const tbody = document.createElement('tbody');
+    rows.forEach(row => tbody.appendChild(row));
+    table.appendChild(tbody);
   }
 
   previewRecord(index) {
