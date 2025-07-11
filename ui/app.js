@@ -45,8 +45,8 @@ class TunnelPandaUI {
     document.getElementById('restart-all-btn')?.addEventListener('click', () => this.restartAll());
 
     // Console clear buttons
-    document.getElementById('clear-server-console')?.addEventListener('click', () => this.clearServerConsole());
-    document.getElementById('clear-tunnel-console')?.addEventListener('click', () => this.clearTunnelConsole());
+    document.getElementById('clear-server-console-btn')?.addEventListener('click', () => this.clearServerConsole());
+    document.getElementById('clear-tunnel-console-btn')?.addEventListener('click', () => this.clearTunnelConsole());
 
     // Security form
     document.getElementById('save-security-btn')?.addEventListener('click', () => this.saveSecuritySettings());
@@ -345,23 +345,27 @@ class TunnelPandaUI {
   // Status update methods
   updateServerStatus(data) {
     const statusElement = document.getElementById('server-status-text');
-    if (statusElement) {
-      statusElement.textContent = data.message;
-    }
+    if (statusElement) statusElement.textContent = data.message;
+    const detail = document.getElementById('server-status-detail');
+    if (detail) detail.textContent = data.message;
+    const proc = document.getElementById('server-process');
+    if (proc) proc.textContent = data.pid ? `PID ${data.pid}` : (data.running ? 'Running' : 'Not running');
   }
 
   updateTunnelStatus(data) {
     const statusElement = document.getElementById('tunnel-status-text');
-    if (statusElement) {
-      statusElement.textContent = data.message;
-    }
+    if (statusElement) statusElement.textContent = data.message;
+    const detail = document.getElementById('tunnel-status-detail');
+    if (detail) detail.textContent = data.message;
+    const proc = document.getElementById('tunnel-process');
+    if (proc) proc.textContent = data.pid ? `PID ${data.pid}` : (data.running ? 'Running' : 'Not running');
   }
 
   updateWebSocketStatus(data) {
     const statusElement = document.getElementById('websocket-status-text');
-    if (statusElement) {
-      statusElement.textContent = data.connected ? 'Connected' : 'Disconnected';
-    }
+    if (statusElement) statusElement.textContent = data.connected ? 'Connected' : 'Disconnected';
+    const dot = document.getElementById('websocket-dot');
+    if (dot) dot.className = `status-dot ${data.connected ? 'success' : 'warning'}`;
   }
 
   handleWebSocketMessage(data) {
@@ -371,87 +375,203 @@ class TunnelPandaUI {
 
   // Placeholder methods for future implementation
   async updateDashboard() {
-    // Dashboard update logic
     this.updateStatusIndicators();
+    const localEl = document.getElementById('local-url');
+    if (localEl) localEl.textContent = `http://localhost:${this.config.port || 16014}`;
+    const tunnelEl = document.getElementById('tunnel-url');
+    if (tunnelEl) tunnelEl.textContent = this.config.tunnelHostname ? `https://${this.config.tunnelHostname}` : 'Not configured';
+    await this.refreshStats();
   }
 
   async loadSecuritySettings() {
-    // Security settings logic
-    const config = this.config;
-    const form = document.getElementById('security-form');
-    if (form && config) {
-      const inputs = form.querySelectorAll('input');
-      inputs.forEach(input => {
-        if (config[input.name]) {
-          input.value = config[input.name];
-        }
-      });
-    }
+    const form = document.getElementById('auth-form');
+    if (!form) return;
+    form.basicAuthUser.value = this.config.basicAuthUser || '';
+    form.basicAuthPass.value = this.config.basicAuthPass || '';
+    form.appToken.value = this.config.appToken || '';
+    await this.refreshClientIPs();
   }
 
   async saveSecuritySettings() {
-    // Save security logic
-    console.log('Saving security settings...');
+    const form = document.getElementById('auth-form');
+    if (!form) return;
+    const cfg = {
+      ...this.config,
+      basicAuthUser: form.basicAuthUser.value.trim(),
+      basicAuthPass: form.basicAuthPass.value,
+      appToken: form.appToken.value
+    };
+    const res = await window.electronAPI.saveConfig(cfg);
+    if (res.success) {
+      this.config = cfg;
+      this.addActivity('security', 'Security settings saved', 'success');
+    } else {
+      this.addActivity('security', `Failed to save: ${res.error}`, 'error');
+    }
   }
 
   async resetSecuritySettings() {
-    // Reset security logic
-    console.log('Resetting security settings...');
+    await this.loadConfig();
+    await this.loadSecuritySettings();
+    this.addActivity('security', 'Security settings reset', 'info');
+  }
+
+  async refreshClientIPs() {
+    try {
+      const res = await fetch(`http://localhost:${this.config.port || 16014}/_internal/rate-status`);
+      const data = await res.json();
+      const container = document.getElementById('client-ips');
+      if (container) {
+        const entries = Object.entries(data.requestsByIP || {});
+        container.innerHTML = entries.length
+          ? entries.map(([ip,count]) => `<div>${ip} - ${count}</div>`).join('')
+          : '<p>No recent connections</p>';
+      }
+    } catch (err) {
+      console.error('Failed to refresh IPs', err);
+    }
   }
 
   async loadEndpointSettings() {
-    // Endpoint settings logic
-    console.log('Loading endpoint settings...');
+    // no-op for now
   }
 
   async saveEndpointSettings() {
-    // Save endpoint logic
-    console.log('Saving endpoint settings...');
+    // no-op
   }
 
   async resetEndpointSettings() {
-    // Reset endpoint logic
-    console.log('Resetting endpoint settings...');
+    // no-op
+  }
+
+  async testEndpoint(path, method = 'GET', body = null) {
+    const url = `http://localhost:${this.config.port || 16014}${path}`;
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Basic ' + btoa(`${this.config.basicAuthUser}:${this.config.basicAuthPass}`),
+          'X-APP-TOKEN': this.config.appToken || ''
+        },
+        body: body && method !== 'GET' ? JSON.stringify(body) : undefined
+      });
+      const text = await res.text();
+      const display = document.getElementById('test-response-display');
+      if (display) display.textContent = text;
+      this.addActivity('endpoint', `${method} ${path} -> ${res.status}`, res.ok ? 'success' : 'error');
+    } catch (err) {
+      this.addActivity('endpoint', `${method} ${path} failed`, 'error');
+    }
   }
 
   async loadMonitoringData() {
-    // Monitoring data logic
-    console.log('Loading monitoring data...');
+    await this.refreshStats();
+  }
+
+  async refreshStats() {
+    try {
+      const res = await fetch(`http://localhost:${this.config.port || 16014}/_internal/rate-status`);
+      const data = await res.json();
+      document.getElementById('total-requests').textContent = Object.values(data.requestsByIP).reduce((a,b)=>a+b,0);
+      document.getElementById('unique-ips').textContent = data.uniqueIPs;
+    } catch (e) {
+      console.error('Failed to load stats', e);
+    }
+  }
+
+  connectWebSocket() {
+    window.electronAPI.connectWebSocket();
+  }
+
+  disconnectWebSocket() {
+    window.electronAPI.disconnectWebSocket();
   }
 
   async loadDatabaseInfo() {
-    // Database info logic
-    console.log('Loading database info...');
+    try {
+      const res = await fetch(`http://localhost:${this.config.port || 16014}/db/status`);
+      const data = await res.json();
+      document.getElementById('current-db-provider').textContent = data.database.provider;
+      document.getElementById('current-db-url').textContent = data.database.url;
+      document.getElementById('current-db-tenant').textContent = data.database.tenant;
+      document.getElementById('current-db-database').textContent = data.database.database;
+      document.getElementById('total-collections').textContent = data.collections.total;
+      const list = document.getElementById('collections-list');
+      if (list) list.innerHTML = data.collections.list.map(c => `<div>${typeof c==='string'?c:c.name}</div>`).join('');
+    } catch (e) {
+      console.error('Failed to load database info', e);
+    }
   }
 
   async loadLogs() {
-    // Load logs logic
-    console.log('Loading logs...');
+    try {
+      const logs = await window.electronAPI.getLogs();
+      const filesDiv = document.getElementById('log-files');
+      const viewer = document.getElementById('log-viewer');
+      if (filesDiv) filesDiv.innerHTML = logs.map(l => `<div>${l.file}</div>`).join('');
+      if (viewer) viewer.textContent = logs.map(l => `\n--- ${l.file} ---\n${l.content}`).join('\n');
+    } catch (e) {
+      console.error('Failed to load logs', e);
+    }
   }
 
   async clearLogs() {
-    // Clear logs logic
-    console.log('Clearing logs...');
+    const viewer = document.getElementById('log-viewer');
+    if (viewer) viewer.textContent = '';
   }
 
   async exportLogs() {
-    // Export logs logic
-    console.log('Exporting logs...');
+    const logs = await window.electronAPI.getLogs();
+    const { canceled, filePath } = await window.electronAPI.showSaveDialog({
+      title: 'Export Logs',
+      defaultPath: 'tunnelpanda-logs.txt'
+    });
+    if (!canceled && filePath) {
+      const blob = new Blob([logs.map(l => `\n--- ${l.file} ---\n${l.content}`).join('\n')], { type: 'text/plain' });
+      const arrayBuffer = await blob.arrayBuffer();
+      await window.electronAPI.saveFile(filePath, Buffer.from(arrayBuffer));
+    }
   }
 
   async loadSettings() {
-    // Load settings logic
-    console.log('Loading settings...');
+    const serverForm = document.getElementById('server-settings-form');
+    const ollamaForm = document.getElementById('ollama-settings-form');
+    if (serverForm) {
+      serverForm.port.value = this.config.port || 16014;
+      serverForm.requestLimit.value = this.config.requestLimit || '10mb';
+      serverForm.payloadThreshold.value = this.config.largePayloadThreshold || 50000;
+    }
+    if (ollamaForm) {
+      ollamaForm.ollamaUrl.value = this.config.ollamaUrl || '';
+      ollamaForm.ollamaApiKey.value = this.config.ollamaApiKey || '';
+    }
   }
 
   async saveSettings() {
-    // Save settings logic
-    console.log('Saving settings...');
+    const serverForm = document.getElementById('server-settings-form');
+    const ollamaForm = document.getElementById('ollama-settings-form');
+    const cfg = {
+      ...this.config,
+      port: parseInt(serverForm.port.value,10),
+      requestLimit: serverForm.requestLimit.value,
+      largePayloadThreshold: parseInt(serverForm.payloadThreshold.value,10),
+      ollamaUrl: ollamaForm.ollamaUrl.value,
+      ollamaApiKey: ollamaForm.ollamaApiKey.value
+    };
+    const res = await window.electronAPI.saveConfig(cfg);
+    if (res.success) {
+      this.config = cfg;
+      this.addActivity('settings', 'Settings saved', 'success');
+    } else {
+      this.addActivity('settings', `Failed to save: ${res.error}`, 'error');
+    }
   }
 
   async resetSettings() {
-    // Reset settings logic
-    console.log('Resetting settings...');
+    await this.loadConfig();
+    await this.loadSettings();
+    this.addActivity('settings', 'Settings reset', 'info');
   }
 }
 
@@ -459,3 +579,28 @@ class TunnelPandaUI {
 document.addEventListener('DOMContentLoaded', () => {
   window.tunnelPandaUI = new TunnelPandaUI();
 });
+
+// Simple utility for copy buttons in the UI
+window.copyToClipboard = (id) => {
+  const el = document.getElementById(id);
+  if (el) {
+    const text = el.textContent || el.value || '';
+    navigator.clipboard.writeText(text).catch((err) => console.error('Copy failed', err));
+  }
+};
+
+window.togglePassword = (id) => {
+  const input = document.getElementById(id);
+  if (input) input.type = input.type === 'password' ? 'text' : 'password';
+};
+
+window.generateToken = (id) => {
+  const input = document.getElementById(id);
+  if (input) input.value = crypto.randomUUID().replace(/-/g, '');
+};
+
+window.refreshClientIPs = () => window.tunnelPandaUI.refreshClientIPs();
+window.testEndpoint = (path, method) => window.tunnelPandaUI.testEndpoint(path, method);
+window.connectWebSocket = () => window.tunnelPandaUI.connectWebSocket();
+window.disconnectWebSocket = () => window.tunnelPandaUI.disconnectWebSocket();
+window.refreshLogs = () => window.tunnelPandaUI.loadLogs();

@@ -23,6 +23,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getLogs: () => ipcRenderer.invoke('get-logs'),
   getStatus: () => ipcRenderer.invoke('get-status'),
 
+  connectWebSocket: () => ipcRenderer.invoke('connect-websocket'),
+  disconnectWebSocket: () => ipcRenderer.invoke('disconnect-websocket'),
+
+  saveFile: (path, buffer) => ipcRenderer.invoke('save-file', path, buffer),
+
   // External links
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
 

@@ -45,8 +45,8 @@ class TunnelPandaUI {
     document.getElementById('restart-all-btn')?.addEventListener('click', () => this.restartAll());
 
     // Console clear buttons
-    document.getElementById('clear-server-console')?.addEventListener('click', () => this.clearServerConsole());
-    document.getElementById('clear-tunnel-console')?.addEventListener('click', () => this.clearTunnelConsole());
+    document.getElementById('clear-server-console-btn')?.addEventListener('click', () => this.clearServerConsole());
+    document.getElementById('clear-tunnel-console-btn')?.addEventListener('click', () => this.clearTunnelConsole());
 
     // Security form
     document.getElementById('save-security-btn')?.addEventListener('click', () => this.saveSecuritySettings());
