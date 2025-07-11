@@ -588,6 +588,53 @@ class TunnelPandaUI {
     await this.loadSettings();
     this.addActivity('settings', 'Settings reset', 'info');
   }
+
+  async testDbConnection() {
+    try {
+      const res = await fetch(`http://localhost:${this.config.port || 16014}/db/status`, {
+        headers: {
+          'Authorization': 'Basic ' + btoa(`${this.config.basicAuthUser}:${this.config.basicAuthPass}`),
+          'X-APP-TOKEN': this.config.appToken || ''
+        }
+      });
+      if (res.ok) {
+        this.addActivity('database', 'Connection successful', 'success');
+        await this.loadDatabaseInfo();
+      } else {
+        this.addActivity('database', `Connection failed: ${res.status}`, 'error');
+      }
+    } catch (e) {
+      console.error('DB connection test failed', e);
+      this.addActivity('database', 'Connection error', 'error');
+    }
+  }
+
+  async refreshCollections() {
+    await this.loadDatabaseInfo();
+  }
+
+  async filterLogs() {
+    const level = document.getElementById('log-level')?.value.toLowerCase();
+    const search = document.getElementById('log-search')?.value.toLowerCase();
+    const logs = await window.electronAPI.getLogs();
+    let lines = logs.map(l => `--- ${l.file} ---\n${l.content}`).join('\n').split('\n');
+    if (level) lines = lines.filter(l => l.toLowerCase().includes(level));
+    if (search) lines = lines.filter(l => l.toLowerCase().includes(search));
+    const viewer = document.getElementById('log-viewer');
+    if (viewer) viewer.textContent = lines.join('\n');
+  }
+
+  async clearLogFilters() {
+    const level = document.getElementById('log-level');
+    const search = document.getElementById('log-search');
+    if (level) level.value = '';
+    if (search) search.value = '';
+    await this.loadLogs();
+  }
+
+  async clearLogViewer() {
+    await this.clearLogs();
+  }
 }
 
 // Initialize the application when DOM is loaded
@@ -619,3 +666,8 @@ window.testEndpoint = (path, method) => window.tunnelPandaUI.testEndpoint(path, 
 window.connectWebSocket = () => window.tunnelPandaUI.connectWebSocket();
 window.disconnectWebSocket = () => window.tunnelPandaUI.disconnectWebSocket();
 window.refreshLogs = () => window.tunnelPandaUI.loadLogs();
+window.testDbConnection = () => window.tunnelPandaUI.testDbConnection();
+window.refreshCollections = () => window.tunnelPandaUI.refreshCollections();
+window.filterLogs = () => window.tunnelPandaUI.filterLogs();
+window.clearLogFilters = () => window.tunnelPandaUI.clearLogFilters();
+window.clearLogViewer = () => window.tunnelPandaUI.clearLogViewer();
