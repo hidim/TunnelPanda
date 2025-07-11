@@ -125,9 +125,14 @@ body {
   box-shadow: 0 0 4px rgba(239, 68, 68, 0.5);
 }
 
-.status-dot.connected {
+.status-dot.success {
   background-color: #10b981;
   box-shadow: 0 0 4px rgba(16, 185, 129, 0.5);
+}
+
+.status-dot.warning {
+  background-color: #facc15;
+  box-shadow: 0 0 4px rgba(250, 204, 21, 0.5);
 }
 
 /* Sidebar */
@@ -421,6 +426,7 @@ body {
   gap: 12px;
   padding: 12px 0;
   border-bottom: 1px solid var(--border-color);
+  font-size: 12px;
 }
 
 .activity-item:last-child {
@@ -479,6 +485,7 @@ body {
   font-family: 'Monaco', 'Consolas', monospace;
   font-size: 12px;
   line-height: 1.4;
+  user-select: text;
 }
 
 .console-line {

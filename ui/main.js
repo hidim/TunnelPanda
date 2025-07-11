@@ -212,9 +212,10 @@ class TunnelPandaApp {
       this.tunnelPandaProcess.on('spawn', () => {
         console.log('Server process spawned successfully');
         this.isServerRunning = true;
-        this.sendToRenderer('server-status', { 
-          running: true, 
-          message: 'TunnelPanda server started' 
+        this.sendToRenderer('server-status', {
+          running: true,
+          message: 'TunnelPanda server started',
+          pid: this.tunnelPandaProcess.pid
         });
         // Try to connect WebSocket for monitoring
         setTimeout(() => this.connectWebSocket(), 2000);
@@ -288,9 +289,10 @@ class TunnelPandaApp {
     });
 
     this.isTunnelRunning = true;
-    this.sendToRenderer('tunnel-status', { 
-      running: true, 
-      message: 'Cloudflare tunnel started' 
+    this.sendToRenderer('tunnel-status', {
+      running: true,
+      message: 'Cloudflare tunnel started',
+      pid: this.cloudflaredProcess.pid
     });
   }
 
@@ -396,6 +398,14 @@ class TunnelPandaApp {
     ipcMain.handle('get-config', () => {
       try {
         require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+        let tunnelHostname = '';
+        try {
+          const cfgPath = path.join(__dirname, '..', 'cloudflared', 'config.yml');
+          const yaml = fs.readFileSync(cfgPath, 'utf8');
+          const match = yaml.match(/hostname:\s*(.+)/);
+          if (match) tunnelHostname = match[1].trim();
+        } catch {}
+
         return {
           port: process.env.PORT || 16014,
           basicAuthUser: process.env.BASIC_AUTH_USER || '',
@@ -407,7 +417,8 @@ class TunnelPandaApp {
           dbUrl: process.env.DB_URL || '',
           dbApiKey: process.env.DB_API_KEY || '',
           dbTenant: process.env.DB_TENANT || '',
-          dbDatabase: process.env.DB_DATABASE || ''
+          dbDatabase: process.env.DB_DATABASE || '',
+          tunnelHostname
         };
       } catch (error) {
         return {};
@@ -486,6 +497,18 @@ DB_DATABASE=${config.dbDatabase}
     ipcMain.handle('show-open-dialog', async (event, options) => {
       const result = await dialog.showOpenDialog(this.mainWindow, options);
       return result;
+    });
+
+    ipcMain.handle('connect-websocket', () => {
+      this.connectWebSocket();
+    });
+
+    ipcMain.handle('disconnect-websocket', () => {
+      this.disconnectWebSocket();
+    });
+
+    ipcMain.handle('save-file', (_e, filePath, buffer) => {
+      fs.writeFileSync(filePath, Buffer.from(buffer));
     });
   }
 }
