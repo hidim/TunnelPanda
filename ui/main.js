@@ -1,10 +1,12 @@
 // ui/main.js
 // Main Electron process for TunnelPanda UI
-const { app, BrowserWindow, ipcMain, Menu, shell, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu, shell, dialog, nativeImage } = require('electron');
 const path = require('path');
 const { spawn, fork } = require('child_process');
 const fs = require('fs');
 const WebSocket = require('ws');
+
+const APP_ICON = path.join(__dirname, 'assets', 'app.png');
 
 // Development mode check
 const isDev = process.argv.includes('--dev');
@@ -22,14 +24,13 @@ class TunnelPandaApp {
 
   createWindow() {
     // Create the browser window
-    const iconPath = path.join(__dirname, 'assets', 'app.png');
     const fallbackIconPath = path.join(__dirname, 'assets', 'icon.png');
-    
+
     // Use app.png if it exists, otherwise fallback to icon.png
-    let windowIcon;
+    let windowIcon = APP_ICON;
     try {
-      if (fs.existsSync(iconPath)) {
-        windowIcon = iconPath;
+      if (fs.existsSync(APP_ICON)) {
+        windowIcon = APP_ICON;
       } else if (fs.existsSync(fallbackIconPath)) {
         windowIcon = fallbackIconPath;
       }
@@ -517,6 +518,13 @@ DB_DATABASE=${config.dbDatabase}
 const tunnelPandaApp = new TunnelPandaApp();
 
 app.whenReady().then(() => {
+  // Ensure proper icon usage on all platforms
+  if (process.platform === 'win32') {
+    app.setAppUserModelId('com.tunnelpanda.app');
+  }
+  if (process.platform === 'darwin' && fs.existsSync(APP_ICON)) {
+    app.dock.setIcon(nativeImage.createFromPath(APP_ICON));
+  }
   tunnelPandaApp.createWindow();
   tunnelPandaApp.setupIpcHandlers();
 
