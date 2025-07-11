@@ -418,7 +418,12 @@ class TunnelPandaUI {
 
   async refreshClientIPs() {
     try {
-      const res = await fetch(`http://localhost:${this.config.port || 16014}/_internal/rate-status`);
+      const res = await fetch(`http://localhost:${this.config.port || 16014}/_internal/rate-status`, {
+        headers: {
+          'Authorization': 'Basic ' + btoa(`${this.config.basicAuthUser}:${this.config.basicAuthPass}`),
+          'X-APP-TOKEN': this.config.appToken || ''
+        }
+      });
       const data = await res.json();
       const container = document.getElementById('client-ips');
       if (container) {
@@ -471,7 +476,12 @@ class TunnelPandaUI {
 
   async refreshStats() {
     try {
-      const res = await fetch(`http://localhost:${this.config.port || 16014}/_internal/rate-status`);
+      const res = await fetch(`http://localhost:${this.config.port || 16014}/_internal/rate-status`, {
+        headers: {
+          'Authorization': 'Basic ' + btoa(`${this.config.basicAuthUser}:${this.config.basicAuthPass}`),
+          'X-APP-TOKEN': this.config.appToken || ''
+        }
+      });
       const data = await res.json();
       document.getElementById('total-requests').textContent = Object.values(data.requestsByIP).reduce((a,b)=>a+b,0);
       document.getElementById('unique-ips').textContent = data.uniqueIPs;
@@ -490,7 +500,12 @@ class TunnelPandaUI {
 
   async loadDatabaseInfo() {
     try {
-      const res = await fetch(`http://localhost:${this.config.port || 16014}/db/status`);
+      const res = await fetch(`http://localhost:${this.config.port || 16014}/db/status`, {
+        headers: {
+          'Authorization': 'Basic ' + btoa(`${this.config.basicAuthUser}:${this.config.basicAuthPass}`),
+          'X-APP-TOKEN': this.config.appToken || ''
+        }
+      });
       const data = await res.json();
       document.getElementById('current-db-provider').textContent = data.database.provider;
       document.getElementById('current-db-url').textContent = data.database.url;
