@@ -284,6 +284,19 @@ npm run build-electron # Build distributable app
 npm run dist           # Create platform installers
 ```
 
+### Packaging the Electron App
+
+Run `npm run build-electron` on your platform to produce a desktop build in
+`dist/`. You can target specific operating systems with flags:
+
+```bash
+npm run build-electron -- --mac   # macOS DMG and app bundle
+npm run build-electron -- --win   # Windows installer
+npm run build-electron -- --linux # Linux AppImage/DEB/RPM
+```
+
+Cross-building may require additional tooling (e.g. Wine for Windows packages).
+
 ### Development
 ```bash
 npm install            # Install dependencies
