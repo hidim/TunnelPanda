@@ -513,7 +513,22 @@ class TunnelPandaUI {
       document.getElementById('current-db-database').textContent = data.database.database;
       document.getElementById('total-collections').textContent = data.collections.total;
       const list = document.getElementById('collections-list');
-      if (list) list.innerHTML = data.collections.list.map(c => `<div>${typeof c==='string'?c:c.name}</div>`).join('');
+      const select = document.getElementById('viewer-select');
+      if (list) {
+        list.innerHTML = data.collections.list.map(c => {
+          const name = typeof c === 'string' ? c : c.name;
+          return `<div class="collection-item" onclick="viewCollection('${name}')">${name}</div>`;
+        }).join('');
+      }
+      if (select) {
+        select.innerHTML = data.collections.list.map(c => {
+          const name = typeof c === 'string' ? c : c.name;
+          return `<option value="${name}">${name}</option>`;
+        }).join('');
+        if (this.currentCollection && data.collections.list.length) {
+          select.value = this.currentCollection;
+        }
+      }
     } catch (e) {
       console.error('Failed to load database info', e);
     }
@@ -613,6 +628,73 @@ class TunnelPandaUI {
     await this.loadDatabaseInfo();
   }
 
+  async viewCollection(name) {
+    this.currentCollection = name;
+    const select = document.getElementById('viewer-select');
+    if (select) select.value = name;
+    await this.loadCollectionData(name);
+  }
+
+  async loadCollectionData(name) {
+    if (!name) return;
+    try {
+      const res = await fetch(`http://localhost:${this.config.port || 16014}/db/${encodeURIComponent(name)}/get`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Basic ' + btoa(`${this.config.basicAuthUser}:${this.config.basicAuthPass}`),
+          'X-APP-TOKEN': this.config.appToken || ''
+        },
+        body: JSON.stringify({ limit: 50, include: ['ids','documents','metadatas'] })
+      });
+      const data = await res.json();
+      this.currentCollectionData = data;
+      this.renderCollectionTable(data);
+    } catch (e) {
+      console.error('Failed to load collection data', e);
+    }
+  }
+
+  renderCollectionTable(data) {
+    const table = document.getElementById('collection-table');
+    if (!table) return;
+    const rows = [];
+    const count = data.ids?.length || 0;
+    for (let i = 0; i < count; i++) {
+      const id = data.ids[i];
+      const doc = JSON.stringify(data.documents?.[i]);
+      const meta = JSON.stringify(data.metadatas?.[i]);
+      rows.push(`<tr onclick="previewRecord(${i})"><td>${this.escapeHtml(id)}</td><td>${this.escapeHtml(this.truncate(doc,60))}</td><td>${this.escapeHtml(this.truncate(meta,60))}</td></tr>`);
+    }
+    table.innerHTML = `<thead><tr><th>ID</th><th>Document</th><th>Metadata</th></tr></thead><tbody>${rows.join('')}</tbody>`;
+  }
+
+  previewRecord(index) {
+    const preview = document.getElementById('collection-preview');
+    const data = this.currentCollectionData;
+    if (!preview || !data) return;
+    const item = {
+      id: data.ids?.[index],
+      document: data.documents?.[index],
+      metadata: data.metadatas?.[index]
+    };
+    preview.textContent = JSON.stringify(item, null, 2);
+  }
+
+  escapeHtml(str) {
+    if (str === undefined || str === null) return '';
+    if (typeof str !== 'string') str = String(str);
+    return str.replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+  }
+
+  truncate(str, n) {
+    return str.length > n ? str.slice(0, n) + '…' : str;
+  }
+
+  async refreshCollectionData() {
+    await this.loadCollectionData(this.currentCollection);
+  }
+
   async filterLogs() {
     const level = document.getElementById('log-level')?.value.toLowerCase();
     const search = document.getElementById('log-search')?.value.toLowerCase();
@@ -668,6 +750,9 @@ window.disconnectWebSocket = () => window.tunnelPandaUI.disconnectWebSocket();
 window.refreshLogs = () => window.tunnelPandaUI.loadLogs();
 window.testDbConnection = () => window.tunnelPandaUI.testDbConnection();
 window.refreshCollections = () => window.tunnelPandaUI.refreshCollections();
+window.viewCollection = (name) => window.tunnelPandaUI.viewCollection(name);
+window.refreshCollectionData = () => window.tunnelPandaUI.refreshCollectionData();
+window.previewRecord = (idx) => window.tunnelPandaUI.previewRecord(idx);
 window.filterLogs = () => window.tunnelPandaUI.filterLogs();
 window.clearLogFilters = () => window.tunnelPandaUI.clearLogFilters();
 window.clearLogViewer = () => window.tunnelPandaUI.clearLogViewer();

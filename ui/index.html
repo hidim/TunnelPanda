@@ -694,6 +694,31 @@
                         </div>
                     </div>
 
+                    <div class="card full-width">
+                        <div class="card-header">
+                            <h3><i class="fas fa-table"></i> Collection Viewer</h3>
+                            <div class="viewer-controls">
+                                <select id="viewer-select"></select>
+                                <button class="btn btn-sm" onclick="refreshCollectionData()">
+                                    <i class="fas fa-sync-alt"></i> Refresh
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-content">
+                            <div class="collection-viewer-grid">
+                                <div class="collection-table-container">
+                                    <table class="collection-table" id="collection-table">
+                                        <thead>
+                                            <tr><th>ID</th><th>Document</th><th>Metadata</th></tr>
+                                        </thead>
+                                        <tbody></tbody>
+                                    </table>
+                                </div>
+                                <pre class="collection-preview" id="collection-preview">Select a record to preview</pre>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="card">
                         <div class="card-header">
                             <h3><i class="fas fa-chart-bar"></i> Database Statistics</h3>
