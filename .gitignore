@@ -135,4 +135,6 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
-.cloudflared/config.yaml
+.cloudflared
+
+.DS_Store
