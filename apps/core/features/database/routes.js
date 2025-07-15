@@ -1,9 +1,9 @@
 // src/routes/db.js
 // Express router for database vector operations (query, add, get, update) on collections.
 const express = require('express');
-const config = require('../config');
-const { getDbClient } = require('../utils/dbFactory');
-const dbEvents = require('../utils/dbEvents');
+const config = require('../../shared/config/config');
+const { getDbClient } = require('../../shared/utils/dbFactory');
+const dbEvents = require('../../shared/utils/dbEvents');
 const router = express.Router();
 
 // Middleware: Ensures collection exists and attaches db client to request.

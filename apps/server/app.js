@@ -17,13 +17,13 @@ const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const http = require('http');
 const crypto = require('crypto');
-const logger = require('./utils/logger');
-const authenticate = require('./middleware/auth');
-const ollamaAPI = require('./utils/api');
-const dbRouter = require('./routes/db');
-const dbEvents = require('./utils/dbEvents');
+const logger = require('../core/shared/utils/logger');
+const authenticate = require('../core/features/auth/middleware');
+const ollamaAPI = require('../core/shared/utils/api');
+const dbRouter = require('../core/features/database/routes');
+const dbEvents = require('../core/shared/utils/dbEvents');
 
-const cfg = require('./config');
+const cfg = require('../core/shared/config/config');
 const PORT = cfg.port;
 const collectionCounts = {};
 
@@ -103,8 +103,8 @@ app.use(authenticate);
 
 // Routes
 electronLog('Setting up routes...');
-app.use('/', require('./routes/health'));
-app.use('/', require('./routes/ollama'));
+app.use('/', require('../core/features/health/routes'));
+app.use('/', require('../core/features/ollama/routes'));
 app.use('/db', dbRouter);
 electronLog('Routes configured: /, /api/*, /db/*');
 

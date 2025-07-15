@@ -2,8 +2,8 @@
 // Express router for Ollama API endpoints: chat, generate, tags, embeddings.
 const express = require('express');
 const router = express.Router();
-const ollamaAPI = require('../utils/api');
-const logger = require('../utils/logger');
+const ollamaAPI = require('../../shared/utils/api');
+const logger = require('../../shared/utils/logger');
 
 /**
  * GET /status

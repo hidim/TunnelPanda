@@ -15,6 +15,20 @@ Tunnel Panda is a modular, secure reverse‑proxy that streams your local Ollama
 - 📜 Winston-based JSON logging with daily rotation  
 - 🔁 One-line self-update: `npm run update`
 - 🖥️ **NEW: Electron GUI Control Center** with visual management
+- 🏗️ **NEW: Feature-based architecture** ready for Pro features
+
+---
+
+## 🏗️ Architecture
+
+TunnelPanda now uses a **feature-based architecture** that makes it easy to add new functionality and maintain the codebase:
+
+- **Modular Features**: Each feature (auth, database, ollama, etc.) is self-contained
+- **Shared Utilities**: Common code is centralized in the shared folder
+- **Pro-Ready**: Structure designed to easily add premium features
+- **Clean Separation**: Core, desktop, and server concerns are separated
+
+See [ARCHITECTURE.md](./ARCHITECTURE.md) for detailed documentation.
 
 ---
 
@@ -22,31 +36,34 @@ Tunnel Panda is a modular, secure reverse‑proxy that streams your local Ollama
 
 ```
 tunnelpanda/
-├── ui/                    # Electron GUI Control Center
-│   ├── main.js
-│   ├── preload.js
-│   ├── index.html
-│   ├── styles.css
-│   ├── app.js
-│   └── assets/
+├── apps/                  # Feature-based application structure
+│   ├── core/             # Core features (free tier)
+│   │   ├── features/     # Feature modules
+│   │   │   ├── auth/     # Authentication
+│   │   │   ├── database/ # Database operations
+│   │   │   ├── health/   # Health checks
+│   │   │   ├── ollama/   # Ollama API integration
+│   │   │   ├── monitoring/ # System monitoring
+│   │   │   └── tunneling/  # Tunnel management
+│   │   ├── shared/       # Shared utilities
+│   │   │   ├── config/   # Configuration
+│   │   │   ├── middleware/ # Common middleware
+│   │   │   └── utils/    # Utility functions
+│   │   └── ui/           # Core UI components
+│   ├── desktop/          # Electron GUI Control Center
+│   │   ├── main/         # Main process
+│   │   ├── preload/      # Preload scripts
+│   │   └── renderer/     # Renderer UI
+│   └── server/           # Express server entry point
 ├── cloudflared/
 │   └── config.yml
-├── src/
-│   ├── app.js
-│   ├── config.js
-│   ├── setup.js
-│   ├── routes/
-│   │   ├── ollama.js
-│   │   └── health.js
-│   ├── middleware/
-│   │   └── auth.js
-│   └── utils/
-│       ├── logger.js
-│       └── api.js
+├── logs/                 # Application logs
+├── scripts/              # Development scripts
+│   └── dev.js           # Development helper
 ├── .env.example
 ├── package.json
-├── start
-└── ReadMe.md
+├── launcher.js
+└── ARCHITECTURE.md       # Architecture documentation
 ```
 
 ---

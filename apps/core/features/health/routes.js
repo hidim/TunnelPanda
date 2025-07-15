@@ -3,7 +3,7 @@
 const express = require('express');
 const axios = require('axios');
 const router = express.Router();
-const cfg = require('../config');
+const cfg = require('../../shared/config/config');
 
 /**
  * GET /status

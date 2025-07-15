@@ -2,14 +2,14 @@
   "name": "tunnelpanda",
   "version": "1.0.0",
   "description": "A tiny Node reverse-proxy for exposing Ollama API via Cloudflare Tunnel with Basic Auth.",
-  "main": "src/app.js",
+  "main": "apps/server/app.js",
   "scripts": {
-    "start": "node src/app.js",
-    "setup": "node src/setup.js",
+    "start": "node apps/server/app.js",
+    "setup": "node apps/core/shared/config/setup.js",
     "update": "npm cache verify && git fetch --prune && git pull --ff-only && npm install --legacy-peer-deps && echo '✅ Update complete. You may need to restart the app.'",
     "launcher": "node launcher.js",
-    "electron": "electron ui/main.js",
-    "electron-dev": "electron ui/main.js --dev",
+    "electron": "electron apps/desktop/main/main.js",
+    "electron-dev": "electron apps/desktop/main/main.js --dev",
     "build-electron": "electron-builder",
     "dist": "npm run build-electron"
   },
@@ -39,21 +39,21 @@
       "output": "dist"
     },
     "files": [
-      "src/**/*",
-      "ui/**/*",
+      "apps/**/*",
+      "cloudflared/**/*",
+      "logs/**/*",
       "package.json",
-      "!logs/*",
       "!node_modules/**/*"
     ],
     "mac": {
       "category": "public.app-category.developer-tools",
-      "icon": "ui/assets/app.png"
+      "icon": "apps/core/ui/assets/app.png"
     },
     "win": {
-      "icon": "ui/assets/app.png"
+      "icon": "apps/core/ui/assets/app.png"
     },
     "linux": {
-      "icon": "ui/assets/app.png"
+      "icon": "apps/core/ui/assets/app.png"
     }
   },
   "author": "",

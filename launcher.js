@@ -59,7 +59,7 @@ rl.question('Enter your choice (1-5): ', (answer) => {
 
 function launchElectron() {
   const electronPath = path.join(__dirname, 'node_modules', '.bin', 'electron');
-  const mainPath = path.join(__dirname, 'ui', 'main.js');
+  const mainPath = path.join(__dirname, 'apps', 'desktop', 'main', 'main.js');
   
   const electron = spawn(electronPath, [mainPath], {
     stdio: 'inherit',
@@ -81,7 +81,7 @@ function launchElectron() {
 }
 
 function launchServer() {
-  const serverPath = path.join(__dirname, 'src', 'app.js');
+  const serverPath = path.join(__dirname, 'apps', 'server', 'app.js');
   
   const server = spawn('node', [serverPath], {
     stdio: 'inherit',
@@ -102,7 +102,7 @@ function launchServer() {
 }
 
 function launchSetup() {
-  const setupPath = path.join(__dirname, 'src', 'setup.js');
+  const setupPath = path.join(__dirname, 'apps', 'core', 'shared', 'config', 'setup.js');
   
   const setup = spawn('node', [setupPath], {
     stdio: 'inherit',

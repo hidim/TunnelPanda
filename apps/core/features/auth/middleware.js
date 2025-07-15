@@ -1,7 +1,7 @@
 // src/middleware/auth.js
 // Authentication middleware for TunnelPanda. Checks Basic Auth and X-APP-TOKEN headers.
 const basicAuth = require('basic-auth');
-const cfg = require('../config');
+const cfg = require('../../shared/config/config');
 
 /**
  * Authenticates requests using Basic Auth and X-APP-TOKEN header.

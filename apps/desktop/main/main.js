@@ -54,7 +54,7 @@ class TunnelPandaApp {
     });
 
     // Load the app
-    this.mainWindow.loadFile(path.join(__dirname, 'index.html'));
+    this.mainWindow.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
 
     // Open DevTools in development
     if (isDev) {
@@ -156,7 +156,7 @@ class TunnelPandaApp {
 
     console.log('Starting TunnelPanda server...');
     
-    const appPath = path.join(__dirname, '..', 'src', 'app.js');
+    const appPath = path.join(__dirname, '..', '..', 'server', 'app.js');
     console.log('Server path:', appPath);
     
     // Check if the app.js file exists
@@ -169,7 +169,7 @@ class TunnelPandaApp {
 
     try {
       this.tunnelPandaProcess = fork(appPath, [], {
-        cwd: path.join(__dirname, '..'),
+        cwd: path.join(__dirname, '..', '..', '..'),
         silent: true,
         stdio: ['pipe', 'pipe', 'pipe', 'ipc']
       });
@@ -257,7 +257,7 @@ class TunnelPandaApp {
       return;
     }
 
-    const configPath = path.join(__dirname, '..', 'cloudflared', 'config.yml');
+    const configPath = path.join(__dirname, '..', '..', '..', 'cloudflared', 'config.yml');
     if (!fs.existsSync(configPath)) {
       this.sendToRenderer('tunnel-error', 'Cloudflare tunnel config not found. Please run setup first.');
       return;
@@ -266,7 +266,7 @@ class TunnelPandaApp {
     this.cloudflaredProcess = spawn('cloudflared', [
       'tunnel', '--config', configPath, 'run', 'tunnelpanda'
     ], {
-      cwd: path.join(__dirname, '..')
+      cwd: path.join(__dirname, '..', '..', '..')
     });
 
     this.cloudflaredProcess.stdout.on('data', (data) => {
@@ -313,7 +313,7 @@ class TunnelPandaApp {
   connectWebSocket() {
     try {
       // Load config to get authentication details
-      const configPath = path.join(__dirname, '..', 'src', 'config.js');
+      const configPath = path.join(__dirname, '..', 'core', 'shared', 'config', 'config.js');
       delete require.cache[require.resolve(configPath)]; // Clear cache to get fresh config
       const config = require(configPath);
       
@@ -398,10 +398,10 @@ class TunnelPandaApp {
     // Configuration
     ipcMain.handle('get-config', () => {
       try {
-        require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+        require('dotenv').config({ path: path.join(__dirname, '..', '..', '..', '.env') });
         let tunnelHostname = '';
         try {
-          const cfgPath = path.join(__dirname, '..', 'cloudflared', 'config.yml');
+          const cfgPath = path.join(__dirname, '..', '..', '..', 'cloudflared', 'config.yml');
           const yaml = fs.readFileSync(cfgPath, 'utf8');
           const match = yaml.match(/hostname:\s*(.+)/);
           if (match) tunnelHostname = match[1].trim();
@@ -428,7 +428,7 @@ class TunnelPandaApp {
 
     ipcMain.handle('save-config', async (event, config) => {
       try {
-        const envPath = path.join(__dirname, '..', '.env');
+        const envPath = path.join(__dirname, '..', '..', '..', '.env');
         const envContent = `# Tunnel Panda
 PORT=${config.port}
 BASIC_AUTH_USER=${config.basicAuthUser}
@@ -456,7 +456,7 @@ DB_DATABASE=${config.dbDatabase}
     // Logs and monitoring
     ipcMain.handle('get-logs', () => {
       try {
-        const logsDir = path.join(__dirname, '..', 'logs');
+        const logsDir = path.join(__dirname, '..', '..', '..', 'logs');
         if (!fs.existsSync(logsDir)) return [];
         
         const logFiles = fs.readdirSync(logsDir)
