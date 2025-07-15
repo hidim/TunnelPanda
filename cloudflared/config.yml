@@ -1,0 +1,7 @@
+tunnel: 0126ec86-19bd-45a0-8222-398eaf0bfe38
+credentials-file: /Users/ahidim/.cloudflared/0126ec86-19bd-45a0-8222-398eaf0bfe38.json
+
+ingress:
+  - hostname: blue.tunnelpanda.com
+    service: http://localhost:16014
+  - service: http_status:404
