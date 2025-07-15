@@ -6,7 +6,7 @@ const { spawn, fork } = require('child_process');
 const fs = require('fs');
 const WebSocket = require('ws');
 
-const APP_ICON = path.join(__dirname, 'assets', 'app.png');
+const APP_ICON = path.join(__dirname, '..', '..', 'core', 'ui', 'assets', 'app.png');
 
 // Development mode check
 const isDev = process.argv.includes('--dev');
@@ -24,7 +24,7 @@ class TunnelPandaApp {
 
   createWindow() {
     // Create the browser window
-    const fallbackIconPath = path.join(__dirname, 'assets', 'icon.png');
+    const fallbackIconPath = path.join(__dirname, 'assets', 'app.png');
 
     // Use app.png if it exists, otherwise fallback to icon.png
     let windowIcon = APP_ICON;
@@ -46,7 +46,7 @@ class TunnelPandaApp {
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
-        preload: path.join(__dirname, 'preload.js')
+        preload: path.join(__dirname, '..', 'preload', 'preload.js')
       },
       titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
       icon: windowIcon,
@@ -156,7 +156,7 @@ class TunnelPandaApp {
 
     console.log('Starting TunnelPanda server...');
     
-    const appPath = path.join(__dirname, '..', '..', 'server', 'app.js');
+    const appPath = path.join(__dirname, '..', '..', '..', 'apps', 'server', 'app.js');
     console.log('Server path:', appPath);
     
     // Check if the app.js file exists
@@ -313,7 +313,7 @@ class TunnelPandaApp {
   connectWebSocket() {
     try {
       // Load config to get authentication details
-      const configPath = path.join(__dirname, '..', 'core', 'shared', 'config', 'config.js');
+      const configPath = path.join(__dirname, '..', '..', 'core', 'shared', 'config', 'config.js');
       delete require.cache[require.resolve(configPath)]; // Clear cache to get fresh config
       const config = require(configPath);
       

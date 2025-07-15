@@ -483,10 +483,18 @@ class TunnelPandaUI {
         }
       });
       const data = await res.json();
-      document.getElementById('total-requests').textContent = Object.values(data.requestsByIP).reduce((a,b)=>a+b,0);
-      document.getElementById('unique-ips').textContent = data.uniqueIPs;
+      
+      // Safely handle potentially undefined data
+      const totalRequests = data.requestsByIP ? Object.values(data.requestsByIP).reduce((a,b)=>a+b,0) : 0;
+      const uniqueIPs = data.uniqueIPs || 0;
+      
+      document.getElementById('total-requests').textContent = totalRequests;
+      document.getElementById('unique-ips').textContent = uniqueIPs;
     } catch (e) {
       console.error('Failed to load stats', e);
+      // Set default values on error
+      document.getElementById('total-requests').textContent = '0';
+      document.getElementById('unique-ips').textContent = '0';
     }
   }
 
@@ -507,26 +515,48 @@ class TunnelPandaUI {
         }
       });
       const data = await res.json();
-      document.getElementById('current-db-provider').textContent = data.database.provider;
-      document.getElementById('current-db-url').textContent = data.database.url;
-      document.getElementById('current-db-tenant').textContent = data.database.tenant;
-      document.getElementById('current-db-database').textContent = data.database.database;
-      document.getElementById('total-collections').textContent = data.collections.total;
-      const list = document.getElementById('collections-list');
-      const select = document.getElementById('viewer-select');
-      if (list) {
-        list.innerHTML = data.collections.list.map(c => {
-          const name = typeof c === 'string' ? c : c.name;
-          return `<div class="collection-item" onclick="viewCollection('${name}')">${name}</div>`;
-        }).join('');
-      }
-      if (select) {
-        select.innerHTML = data.collections.list.map(c => {
-          const name = typeof c === 'string' ? c : c.name;
-          return `<option value="${name}">${name}</option>`;
-        }).join('');
-        if (this.currentCollection && data.collections.list.length) {
-          select.value = this.currentCollection;
+      
+      // Handle database connection status
+      if (data.connected) {
+        document.getElementById('current-db-provider').textContent = data.database?.provider || 'Unknown';
+        document.getElementById('current-db-url').textContent = data.database?.url || 'Unknown';
+        document.getElementById('current-db-tenant').textContent = data.database?.tenant || 'Unknown';
+        document.getElementById('current-db-database').textContent = data.database?.database || 'Unknown';
+        document.getElementById('total-collections').textContent = data.collections?.total || 0;
+        
+        const list = document.getElementById('collections-list');
+        const select = document.getElementById('viewer-select');
+        if (list) {
+          list.innerHTML = (data.collections?.list || []).map(c => {
+            const name = typeof c === 'string' ? c : c.name;
+            return `<div class="collection-item" onclick="viewCollection('${name}')">${name}</div>`;
+          }).join('');
+        }
+        if (select) {
+          select.innerHTML = '<option value="">Select Collection</option>' + 
+            (data.collections?.list || []).map(c => {
+              const name = typeof c === 'string' ? c : c.name;
+              return `<option value="${name}">${name}</option>`;
+            }).join('');
+          if (this.currentCollection && data.collections?.list?.length) {
+            select.value = this.currentCollection;
+          }
+        }
+      } else {
+        // Database not connected
+        document.getElementById('current-db-provider').textContent = data.database?.provider || 'Unknown';
+        document.getElementById('current-db-url').textContent = data.database?.url || 'Unknown';
+        document.getElementById('current-db-tenant').textContent = 'Not Connected';
+        document.getElementById('current-db-database').textContent = data.error || 'Connection Failed';
+        document.getElementById('total-collections').textContent = '0';
+        
+        const list = document.getElementById('collections-list');
+        const select = document.getElementById('viewer-select');
+        if (list) {
+          list.innerHTML = '<div class="error-message">Database not connected</div>';
+        }
+        if (select) {
+          select.innerHTML = '<option value="">Database not connected</option>';
         }
       }
     } catch (e) {

@@ -137,18 +137,29 @@ router.get('/status', async (req, res, next) => {
   try {
     const db = getDbClient();
     
-    // Get actual collections from the database
-    const collections = await db.listCollections();
+    // Try to get collections from the database
+    let collections = [];
+    let connected = true;
+    let error = null;
+    
+    try {
+      collections = await db.listCollections();
+    } catch (dbError) {
+      connected = false;
+      error = dbError.message;
+      console.error('Database connection error:', dbError);
+    }
     
     // Build comprehensive status response
     const status = {
-      connected: true,
+      connected,
+      error,
       timestamp: new Date().toISOString(),
       database: {
-        provider: require('../config').dbProvider,
-        url: require('../config').dbUrl?.split('@')[1] || 'configured', // Hide credentials
-        tenant: require('../config').dbTenant,
-        database: require('../config').dbDatabase
+        provider: config.dbProvider,
+        url: config.dbUrl?.split('@')[1] || 'configured', // Hide credentials
+        tenant: config.dbTenant,
+        database: config.dbDatabase
       },
       collections: {
         total: collections.length,
