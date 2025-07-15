@@ -126,11 +126,3 @@ cypress/videos/
 
 # Mac system files
 .DS_Store
-
-# Cloudflared configuration and credential files
-.cloudflared/
-
-# Ignore specific cloudflared config files
-# Note: These files are sensitive and should not be tracked in version control.
-cloudflared/config.yml
-cloudflared/credentials.json
