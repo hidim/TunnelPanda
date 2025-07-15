@@ -1,0 +1,7 @@
+# tunnel: <TUNNEL_UUID>                 # from the create step
+# credentials-file: /home/<user>/.cloudflared/<TUNNEL_UUID>.json
+
+# ingress:
+#   - hostname: api.your-domain.com     # public URL your clients will call
+#     service: http://localhost:16014   # maps straight to Tunnel Panda
+#   - service: http_status:404          # anything else → 404

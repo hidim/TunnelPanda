@@ -1,0 +1,61 @@
+{
+  "name": "tunnelpanda",
+  "version": "1.0.0",
+  "description": "A tiny Node reverse-proxy for exposing Ollama API via Cloudflare Tunnel with Basic Auth.",
+  "main": "apps/server/app.js",
+  "scripts": {
+    "start": "node apps/server/app.js",
+    "setup": "node apps/core/shared/config/setup.js",
+    "update": "npm cache verify && git fetch --prune && git pull --ff-only && npm install --legacy-peer-deps && echo '✅ Update complete. You may need to restart the app.'",
+    "launcher": "node launcher.js",
+    "electron": "electron apps/desktop/main/main.js",
+    "electron-dev": "electron apps/desktop/main/main.js --dev",
+    "build-electron": "electron-builder",
+    "dist": "npm run build-electron"
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "basic-auth": "^2.0.1",
+    "dotenv": "^16.4.5",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.0.0",
+    "helmet": "^7.0.0",
+    "ioredis": "^5.6.1",
+    "morgan": "^1.10.0",
+    "mysql2": "^3.14.1",
+    "pg": "^8.15.6",
+    "sqlite3": "^5.1.7",
+    "winston": "^3.13.0",
+    "ws": "^8.18.2"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.tunnelpanda.app",
+    "productName": "TunnelPanda",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "apps/**/*",
+      "cloudflared/**/*",
+      "logs/**/*",
+      "package.json",
+      "!node_modules/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "icon": "apps/core/ui/assets/app.png"
+    },
+    "win": {
+      "icon": "apps/core/ui/assets/app.png"
+    },
+    "linux": {
+      "icon": "apps/core/ui/assets/app.png"
+    }
+  },
+  "author": "",
+  "license": "MIT"
+}
